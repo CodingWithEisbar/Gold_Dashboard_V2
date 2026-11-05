@@ -1,0 +1,22 @@
+# Use only after CI has built/scanned/pushed these exact digests. Compose >=2.24 required.
+services:
+  db:
+    build: !reset null
+    image: ${POSTGRES_IMAGE:?Set scanned PostgreSQL image digest}
+    pull_policy: always
+  migrate:
+    build: !reset null
+    image: ${BACKEND_IMAGE:?Set scanned backend image digest}
+    pull_policy: always
+  api:
+    build: !reset null
+    image: ${BACKEND_IMAGE:?Set scanned backend image digest}
+    pull_policy: always
+  worker:
+    build: !reset null
+    image: ${BACKEND_IMAGE:?Set scanned backend image digest}
+    pull_policy: always
+  frontend:
+    build: !reset null
+    image: ${FRONTEND_IMAGE:?Set scanned frontend image digest}
+    pull_policy: always

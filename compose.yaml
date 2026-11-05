@@ -1,0 +1,123 @@
+name: gold-premium
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 128
+  mem_limit: 512m
+  cpus: 1.0
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+services:
+  db:
+    <<: *hardening
+    image: ${POSTGRES_IMAGE:-gold-postgres:local}
+    build: {context: ., dockerfile: infra/postgres/Dockerfile}
+    user: "70:70"
+    mem_limit: 1g
+    shm_size: 128mb
+    environment:
+      POSTGRES_DB: gold
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_admin_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [db_admin_password, db_owner_password, db_reader_password, db_ingestor_password]
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./infra/db-init.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    tmpfs: ["/tmp:uid=70,gid=70", "/var/run/postgresql:uid=70,gid=70"]
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d gold]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    <<: *hardening
+    image: ${BACKEND_IMAGE:-gold-backend:local}
+    build: {context: ., dockerfile: backend/Dockerfile}
+    restart: "no"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_ROLE: gold_owner
+      DATABASE_PASSWORD_FILE: /run/secrets/db_owner_password
+    secrets: [db_owner_password]
+    command: [sh, -c, "alembic upgrade head && python -m app.jobs.catalog && python -m app.jobs.grant_roles"]
+    tmpfs: ["/tmp:uid=10001,gid=10001"]
+    networks: [database]
+    depends_on: {db: {condition: service_healthy}}
+
+  api:
+    <<: *hardening
+    image: ${BACKEND_IMAGE:-gold-backend:local}
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_ROLE: gold_reader
+      DATABASE_PASSWORD_FILE: /run/secrets/db_reader_password
+    secrets: [db_reader_password]
+    expose: ["8000"]
+    tmpfs: ["/tmp:uid=10001,gid=10001"]
+    networks: [application, database]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    <<: *hardening
+    image: ${BACKEND_IMAGE:-gold-backend:local}
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_ROLE: gold_ingestor
+      DATABASE_PASSWORD_FILE: /run/secrets/db_ingestor_password
+      XAU_API_KEY: ${XAU_API_KEY:-}
+      METALS_LICENSE_CONFIRMED: ${METALS_LICENSE_CONFIRMED:-false}
+      SOURCE_ALLOWLIST: api.metals.dev
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-10}
+    secrets: [db_ingestor_password]
+    # Dokploy Compose Jobs exec into a running container. This process does no scheduling.
+    command: [python, -c, "import threading; threading.Event().wait()"]
+    tmpfs: ["/tmp:uid=10001,gid=10001"]
+    networks: [database, outbound]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+    healthcheck:
+      test: [CMD, python, -c, "from app.db import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text('SELECT 1')); c.close()"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    <<: *hardening
+    image: ${FRONTEND_IMAGE:-gold-frontend:local}
+    build: {context: ., dockerfile: frontend/Dockerfile}
+    mem_limit: 128m
+    expose: ["8080"]
+    tmpfs: ["/tmp:uid=101,gid=101"]
+    networks: [application, ingress]
+    depends_on: {api: {condition: service_healthy}}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata:
+networks:
+  database: {internal: true}
+  application: {internal: true}
+  outbound: {}
+  ingress: {}
+secrets:
+  db_admin_password: {environment: DB_ADMIN_PASSWORD}
+  db_owner_password: {environment: DB_OWNER_PASSWORD}
+  db_reader_password: {environment: DB_READER_PASSWORD}
+  db_ingestor_password: {environment: DB_INGESTOR_PASSWORD}

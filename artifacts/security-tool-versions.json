@@ -1,0 +1,14 @@
+{
+  "google/osv-scanner": {
+    "version": "v2.7.0",
+    "sha256": "9964ed64ec9a387391eb4cc006ad5c531154821aef29b793e02c448de4686438"
+  },
+  "aquasecurity/trivy": {
+    "version": "v0.76.2",
+    "sha256": "691f737a7e5566a673c3a74dab9160552ec32101e953b659e5c77443d16dddb6"
+  },
+  "gitleaks/gitleaks": {
+    "version": "v8.30.1",
+    "sha256": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e"
+  }
+}

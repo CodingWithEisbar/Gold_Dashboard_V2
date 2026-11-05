@@ -1,0 +1,10 @@
+{
+  "Rules": [{
+    "ID": "gold-daily-retention",
+    "Status": "Enabled",
+    "Filter": {"Prefix": "gold/"},
+    "Expiration": {"Days": 35},
+    "NoncurrentVersionExpiration": {"NoncurrentDays": 7},
+    "AbortIncompleteMultipartUpload": {"DaysAfterInitiation": 1}
+  }]
+}

@@ -1,0 +1,32 @@
+services:
+  backup:
+    build: {context: ., dockerfile: infra/backup/Dockerfile}
+    image: ${BACKUP_IMAGE:-gold-backup:local}
+    user: "70:70"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+    environment:
+      S3_BUCKET: ${S3_BUCKET:?S3_BUCKET required}
+      S3_KMS_KEY_ID: ${S3_KMS_KEY_ID:?S3_KMS_KEY_ID required}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:?AWS_DEFAULT_REGION required}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID required}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY required}
+    secrets: [db_reader_password]
+    tmpfs: ["/tmp:uid=70,gid=70"]
+    networks: [database, backup_outbound]
+    depends_on: {db: {condition: service_healthy}}
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -h db -U gold_reader -d gold]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+networks:
+  backup_outbound: {}

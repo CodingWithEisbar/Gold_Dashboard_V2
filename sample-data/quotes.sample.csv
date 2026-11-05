@@ -1,0 +1,7 @@
+kind,provider_id,product_id,provider_timestamp,bid,ask,value,unit,reference_type
+gold,sjc,sjc-bar-1l-hcm,2026-11-04T18:00:00+07:00,137000000,140000000,,VND/luong,sample
+spot,manual-spot,,2026-11-04T17:55:00+07:00,,,4000,USD/troy_oz,sample
+fx,manual-fx,,2026-11-04T17:55:00+07:00,,,26000,VND/USD,sample
+gold,sjc,sjc-bar-1l-hcm,2026-11-05T18:00:00+07:00,138000000,141000000,,VND/luong,sample
+spot,manual-spot,,2026-11-05T17:55:00+07:00,,,4010,USD/troy_oz,sample
+fx,manual-fx,,2026-11-05T17:55:00+07:00,,,26010,VND/USD,sample

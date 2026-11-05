@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "checks": [
+    "empty market state",
+    "five screens",
+    "missing history rejected",
+    "server Decimal scenario loss 11m",
+    "scenario chart",
+    "mobile no overflow",
+    "keyboard navigation",
+    "no runtime JS errors"
+  ]
+}

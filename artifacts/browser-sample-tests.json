@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "checks": [
+    "sample banner",
+    "entry ask/exit bid loss 2m",
+    "backtest same-day spread loss 3m",
+    "chart renders",
+    "no JavaScript runtime errors"
+  ]
+}

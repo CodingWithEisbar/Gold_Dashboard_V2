@@ -1,0 +1,5 @@
+services:
+  backup:
+    build: !reset null
+    image: ${BACKUP_IMAGE:?Set scanned backup image digest}
+    pull_policy: always

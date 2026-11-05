@@ -1,0 +1,103 @@
+name: test-security-release-gate
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: gold_test_ci
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v6
+        with: {python-version: "3.15.2"}
+      - uses: actions/setup-node@v6
+        with: {node-version: "24.22.1", cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - name: PostgreSQL 18 client tools for dump/restore
+        run: |
+          mkdir -p .tools/pg-client
+          cat > .tools/pg-client/pg_dump <<'SCRIPT'
+          #!/usr/bin/env bash
+          exec docker run --rm --network host -v "$PWD:$PWD" -w "$PWD" -v /tmp:/tmp -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE postgres:18.6-alpine pg_dump "$@"
+          SCRIPT
+          cat > .tools/pg-client/pg_restore <<'SCRIPT'
+          #!/usr/bin/env bash
+          exec docker run --rm --network host -v "$PWD:$PWD" -w "$PWD" -v /tmp:/tmp -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE postgres:18.6-alpine pg_restore "$@"
+          SCRIPT
+          chmod +x .tools/pg-client/pg_dump .tools/pg-client/pg_restore
+          echo "$PWD/.tools/pg-client" >> "$GITHUB_PATH"
+      - name: Backend tests and audits
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://postgres:ci-test-only@localhost:5432/gold_test_ci
+        run: |
+          python -m pip install --require-hashes -r backend/requirements-dev.lock
+          mkdir -p artifacts
+          python -m ruff check --config backend/pyproject.toml backend/app backend/tests backend/migrations
+          python -m pytest -q --junitxml=artifacts/backend-tests.xml
+          python -m pip_audit -r backend/requirements.lock --format json --output artifacts/pip-audit.json
+      - name: Frontend checks
+        working-directory: frontend
+        run: |
+          npm ci --ignore-scripts
+          npm run lint
+          npm run typecheck
+          npm run build
+          npm audit --json > ../artifacts/npm-audit.json
+          npm audit --omit=dev --json > ../artifacts/npm-audit-runtime.json
+      - name: Security scanners (verified release checksums)
+        run: |
+          mkdir -p .tools/security
+          cd .tools/security
+          curl -fsSLO https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          curl -fsSLO https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt
+          sha256sum --check --ignore-missing gitleaks_8.30.1_checksums.txt
+          tar -xzf gitleaks_8.30.1_linux_x64.tar.gz gitleaks
+          curl -fsSLO https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_Linux-64bit.tar.gz
+          curl -fsSLO https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_checksums.txt
+          sha256sum --check --ignore-missing trivy_0.76.2_checksums.txt
+          tar -xzf trivy_0.76.2_Linux-64bit.tar.gz trivy
+          curl -fsSLO https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64
+          curl -fsSLO https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_SHA256SUMS
+          sha256sum --check --ignore-missing osv-scanner_SHA256SUMS
+          chmod +x osv-scanner_linux_amd64
+      - name: Source, history and lockfile security
+        run: |
+          .tools/security/gitleaks git . --redact --report-format json --report-path artifacts/gitleaks-history.json
+          .tools/security/gitleaks dir . --redact --report-format json --report-path artifacts/gitleaks.json
+          .tools/security/osv-scanner_linux_amd64 scan source --lockfile frontend/package-lock.json --lockfile requirements.txt:backend/requirements.lock --format json --output-file artifacts/osv.json
+          .tools/security/trivy fs --scanners vuln,misconfig,secret --skip-dirs .tools --skip-dirs artifacts --skip-dirs frontend/node_modules --severity HIGH,CRITICAL --exit-code 1 --format json --output artifacts/trivy-fs.json .
+      - name: Build hardened containers and validate deployment
+        run: |
+          python infra/init-local-env.py
+          docker compose config --quiet
+          docker compose build
+          docker compose -f compose.yaml -f compose.local.yaml up -d --wait --wait-timeout 180
+          python infra/container_smoke.py
+      - name: Final image scan and SBOM
+        run: |
+          for image in gold-backend:local gold-frontend:local gold-postgres:local; do
+            name=${image%:*}
+            .tools/security/trivy image --severity HIGH,CRITICAL --exit-code 1 --format json --output artifacts/${name}-scan.json "$image"
+            .tools/security/trivy image --format cyclonedx --output artifacts/${name}-sbom.json "$image"
+          done
+          docker build -t gold-backup:local -f infra/backup/Dockerfile .
+          .tools/security/trivy image --severity HIGH,CRITICAL --exit-code 1 --format json --output artifacts/backup-scan.json gold-backup:local
+          .tools/security/trivy image --format cyclonedx --output artifacts/backup-sbom.json gold-backup:local
+      - name: Logs and teardown
+        if: always()
+        run: |
+          docker compose logs --no-color --tail 100 > artifacts/compose-logs.txt || true
+          docker compose down || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: verification-reports, path: artifacts/, retention-days: 14}

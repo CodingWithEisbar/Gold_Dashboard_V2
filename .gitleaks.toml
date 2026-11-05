@@ -1,0 +1,9 @@
+title = "Gold Premium source scan"
+[extend]
+useDefault = true
+[allowlist]
+description = "Generated environments and scanner reports are not application source"
+paths = [
+  '''(^|/)\.tools/''', '''(^|/)\.venv/''', '''(^|/)node_modules/''',
+  '''(^|/)dist/''', '''(^|/)artifacts/''', '''(^|/)\.git/'''
+]
