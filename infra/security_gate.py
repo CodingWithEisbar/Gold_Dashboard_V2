@@ -102,11 +102,18 @@ def main():
         run(compose + ["ps", "--format", "json"], report="compose-ps.json")
     elif args.phase == "test":
         run([docker, "build", "-t", "gold-verifier:gate", "-f", "infra/testing/Dockerfile", "."])
+        uid, gid = 10002, 10002
+        if os.name == "posix" and os.getuid() != 0:
+            # Bind-mounted reports belong to the host runner, including existing JUnit files.
+            # Match its identity on Linux; keep the image's non-root identity on Windows.
+            uid, gid = os.getuid(), os.getgid()
         run(
             [
                 docker,
                 "run",
                 "--rm",
+                "--user",
+                f"{uid}:{gid}",
                 "--read-only",
                 "--cap-drop",
                 "ALL",
@@ -121,7 +128,7 @@ def main():
                 "--network",
                 PROJECT + "_database",
                 "--tmpfs",
-                "/tmp:uid=10002,gid=10002",  # noqa: S108 -- private container tmpfs, not a host temp file
+                f"/tmp:uid={uid},gid={gid}",  # noqa: S108 -- private container tmpfs, not a host temp file
                 "--env",
                 "HYPOTHESIS_STORAGE_DIRECTORY=/tmp/hypothesis",
                 "--mount",
