@@ -32,7 +32,9 @@ def loaded(db, settings):
 def test_health_and_empty_data(client):
     assert client.get("/api/v1/health/live").status_code == 200
     assert client.get("/api/v1/health/ready").status_code == 200
-    assert len(client.get("/api/v1/catalog/products").json()["data"]) == 4
+    products = client.get("/api/v1/catalog/products").json()["data"]
+    assert len(products) == 5
+    assert any(product["id"] == "btmh-kgb-24k-listed" for product in products)
     response = client.get("/api/v1/quotes/latest?product_id=sjc-bar-1l-hcm").json()
     assert response["data"] is None and response["data_status"] == "missing"
 
@@ -46,6 +48,37 @@ def test_history_precision_provenance_and_missing(client, loaded):
     assert rows[1]["premium_status"] == "aligned_daily"
     assert rows[1]["data_status"] == "sample"
     assert rows[1]["spot"]["source"] == "manual-spot"
+
+
+def test_btmh_quote_reaches_history_and_simulator_without_invented_world_price(client, db, settings):
+    from datetime import UTC, datetime
+
+    from app.models import DataSource
+    from app.providers.btmh import PRODUCT_ID, parse_btmh
+
+    db.get(DataSource, "btmh").license_status = "licensed"
+    fixture = (Path(__file__).parent / "fixtures/btmh.sample.html").read_bytes()
+    observed = datetime(2026, 11, 5, 11, tzinfo=UTC)
+    ingest(db, parse_btmh(fixture, now=observed), settings, now=observed)
+    reconcile_day(db, date(2026, 11, 5), settings)
+    db.commit()
+    latest = client.get(f"/api/v1/quotes/latest?product_id={PRODUCT_ID}").json()
+    assert latest["data"]["ask"] == "141000000.00000000"
+    assert latest["data"]["source"] == "btmh"
+    response = client.get(f"/api/v1/prices/history?product_id={PRODUCT_ID}&from=2026-11-05&to=2026-11-05")
+    quote = response.json()["data"][0]
+    assert quote["premium_status"] == "missing" and quote["premium"] is None
+    result = client.post(
+        "/api/v1/simulations/historical",
+        json={
+            "product_id": PRODUCT_ID,
+            "entry_date": "2026-11-05",
+            "exit_date": "2026-11-05",
+            "quantity": "1",
+        },
+    )
+    assert result.status_code == 200
+    assert result.json()["data"]["net_pnl_vnd"] == "-4000000.00000000"
 
 
 def test_misaligned_premium_is_only_indicative(db, settings):

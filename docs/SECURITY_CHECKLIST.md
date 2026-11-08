@@ -9,9 +9,9 @@ Không coi file checklist này là chứng nhận ASVS. Mục tiêu là các ki�
 - [x] npm audit full và runtime, pip-audit: xem artifacts thực tế.
 - [x] Decimal/precision/input/SQLi/XSS/SSRF/CSV/rate tests; PostgreSQL append-only và least privilege tests.
 - [x] Pin dependencies/lockfiles/hash; Compose config checks; source không có secrets thật được chủ động tạo.
-- [x] Gitleaks source / OSV lockfiles / Trivy filesystem đã chạy; xem IMPLEMENTATION_STATUS. Source scans pass, base image scans còn findings được ghi rõ.
-- [ ] Docker build/up/health/Nginx smoke trên Linux daemon.
-- [ ] Scan final backend/frontend/backup images và OS packages, tạo image SBOM; gate fail nếu có Critical/High chưa xử lý. Không tự chấp nhận rủi ro.
+- [x] Gitleaks source/history / OSV lockfiles / Trivy filesystem đã chạy; xem IMPLEMENTATION_STATUS. Base image findings ban đầu được giữ để đối chiếu.
+- [x] Docker build/up/health/Nginx smoke trên Linux daemon: 9 nhóm pass và browser QA thực tế.
+- [x] Scan final backend/frontend/PostgreSQL/backup images và OS packages: 0 High/Critical, có image SBOM. Không ignore hoặc tự chấp nhận rủi ro; xem SECURITY_GATE_RESULTS.
 - [ ] Pin release images bằng sha256 digest sau khi build và scan (tags hiện tại là baseline có phiên bản).
 - [ ] TLS/HSTS, IP/firewall/isolated network thực tế, ingress timeout, Dokploy 2FA/VPN, SSH keys-only, không public DB/API/dashboard.
 - [ ] Kiểm tra `.env`/source maps/hidden files trả 404 qua HTTPS; API docs không tồn tại production.

@@ -1,0 +1,87 @@
+[
+    {
+        "Id": "sha256:3d2643c1d499bc070a639c84427ce57cdf5366df15986e4a0feba60242619650",
+        "RepoTags": [
+            "gold-backend:gate"
+        ],
+        "RepoDigests": [
+            "gold-backend@sha256:3d2643c1d499bc070a639c84427ce57cdf5366df15986e4a0feba60242619650"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-11-06T14:16:06.324424887Z",
+        "Config": {
+            "User": "10001:10001",
+            "Env": [
+                "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "PYTHON_VERSION=3.15.2",
+                "PYTHON_SHA256=8b5536d280142ecf6cdfe15d12a21ba1c65e300bbf7b28a8d0cdb849575797de",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1",
+                "PIP_NO_CACHE_DIR=1"
+            ],
+            "Entrypoint": [
+                "python",
+                "-m",
+                "app.jobs.container_entrypoint"
+            ],
+            "Cmd": [
+                "uvicorn",
+                "app.main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000",
+                "--workers",
+                "1",
+                "--no-proxy-headers",
+                "--no-access-log",
+                "--limit-concurrency",
+                "64",
+                "--timeout-keep-alive",
+                "5"
+            ],
+            "WorkingDir": "/app",
+            "Labels": {
+                "com.docker.compose.project": "gold-security-gate",
+                "com.docker.compose.service": "api",
+                "com.docker.compose.version": "5.6.1"
+            },
+            "ArgsEscaped": true
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 181368579,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:75f1d9657d880da5f75298e8f40e9928bb6e260c50d26f97af196845307e3064",
+                "sha256:e61c8fdd71b8d037c5f2fd4009fc6e7969bd78930721e396bc2fb276f8e8636d",
+                "sha256:1785d0ff8cbc36b58de0c0186677afc589ed138f6b8ea8d99c18e6526c418dac",
+                "sha256:ba5aa3c157e6d705f195f364b7b7f0728cc14fad95fc1d5bce9715ce09b9eb7c",
+                "sha256:d851770701a2dddc6b927f472466551d36ab6e3738ff468cfcb1128185cd22de",
+                "sha256:1674929ef934e5d73c5ad9eb1b2a57aab27a93e42b3742087f754885a827f5ed",
+                "sha256:5bacd1578c5b15620a4f8355d0fcd6df6b295a66c71910f91bf02b749be4614b",
+                "sha256:0078974cfb79fde9608b78ebc19c68b96f4ed691a270f05ce9b52f155f99461a",
+                "sha256:ab2d570a219e420488dff59a72b7bfcffec12bc4f243398990ffaae0633d6b26",
+                "sha256:86cf535943db5b969f9fcea0853f85618eb771eed58d77c146f8e97b6917481e"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-11-06T14:16:09.41609099Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:3d2643c1d499bc070a639c84427ce57cdf5366df15986e4a0feba60242619650",
+            "size": 856
+        },
+        "Identity": {
+            "Build": [
+                {
+                    "Ref": "qwa6xddmrscwh6g6nh6l21eik",
+                    "CreatedAt": "2026-11-06T14:16:11.144470637Z"
+                }
+            ]
+        }
+    }
+]

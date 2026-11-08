@@ -7,8 +7,11 @@ const fs = require('node:fs');
   const page = await browser.newPage({viewport: {width: 1440, height: 1000}});
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
+  page.on('console', message => {
+    if (message.type() === 'error' && /content security policy|violates.*directive/i.test(message.text())) errors.push(message.text());
+  });
   try {
-    const response = await page.goto('http://127.0.0.1:8765');
+    const response = await page.goto(process.env.BASE_URL || 'http://127.0.0.1:8765');
     assert.equal(response.status(), 200);
     await page.getByRole('heading', {name: 'Tổng quan', exact: true}).waitFor();
     await page.getByText('Lịch sử bắt đầu từ dữ liệu thật', {exact: true}).waitFor();
@@ -36,7 +39,7 @@ const fs = require('node:fs');
     await page.keyboard.press('Enter');
     await page.getByRole('heading', {name: 'Phòng kịch bản', exact: true}).waitFor();
     assert.deepEqual(errors, []);
-    fs.writeFileSync('artifacts/browser-tests.json', JSON.stringify({status: 'passed', checks: ['empty market state', 'five screens', 'missing history rejected', 'server Decimal scenario loss 11m', 'scenario chart', 'mobile no overflow', 'keyboard navigation', 'no runtime JS errors']}, null, 2));
+    fs.writeFileSync(process.env.BROWSER_REPORT || 'artifacts/browser-tests.json', JSON.stringify({status: 'passed', checked_at: new Date().toISOString(), base_url: process.env.BASE_URL || 'http://127.0.0.1:8765', checks: ['empty market state', 'five screens', 'missing history rejected', 'server Decimal scenario loss 11m', 'scenario chart', 'mobile no overflow', 'keyboard navigation', 'no runtime JS or CSP errors']}, null, 2));
     console.log('Browser QA: 8 checks passed (desktop 1440px, mobile 390px).');
   } finally { await browser.close(); }
 })().catch(e => {console.error(e); process.exitCode = 1;});

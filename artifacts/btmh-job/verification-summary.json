@@ -1,0 +1,46 @@
+{
+  "checked_at_utc": "2026-11-07T17:58:25.166752+00:00",
+  "environment": "Local Docker Linux, isolated gold-btmh-gate project; not VPS",
+  "tests": {
+    "tests": 130,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "container_smoke_checks": 10,
+  "browser_checks": 8,
+  "pip_audit_vulnerabilities": 0,
+  "source_secret_findings": 0,
+  "images": [
+    {
+      "name": "backend",
+      "local_image_id": "sha256:9cf127906d585f46b65640cea141dbe88e1ec4560e669034ebea7a4d654b4358",
+      "high_critical": 0
+    },
+    {
+      "name": "frontend",
+      "local_image_id": "sha256:383acd749032cfae61918571903c702ffd42e24dcba9527b5f7d47934cdde757",
+      "high_critical": 0
+    },
+    {
+      "name": "postgres",
+      "local_image_id": "sha256:11e1322719c38aa898f98182e3eb6f5230b5fd2cba824d1bf94010babd2f5ac9",
+      "high_critical": 0
+    },
+    {
+      "name": "backup",
+      "local_image_id": "sha256:b24b3108db30c947246a1f48f1d5e3ef285d6a2c6260d96c0fa99ab84b893c23",
+      "high_critical": 0
+    }
+  ],
+  "schema_revision": "c9d4ef202601",
+  "market_quotes_written_by_runtime_smoke": 0,
+  "live_ingestion_enabled": false,
+  "not_verified": [
+    "User VPS/Dokploy deployment and schedule execution",
+    "Provider storage/redisplay rights and unit/timezone confirmation",
+    "World spot API credentials and FX feed",
+    "Remote registry image digests, HTTPS and S3 backup"
+  ],
+  "passed": true
+}

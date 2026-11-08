@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-EXCLUDE = {".git", ".venv", ".tools", "node_modules", "dist", "artifacts", "__pycache__",
+EXCLUDE = {".git", ".venv", ".tools", ".secrets", "node_modules", "dist", "artifacts", "__pycache__",
            ".pytest_cache", ".hypothesis", ".ruff_cache", "backups"}
 
 
@@ -17,16 +17,18 @@ def main():
         subdirs[:] = sorted(name for name in subdirs if name not in EXCLUDE)
         for name in sorted(names):
             path = Path(directory) / name
+            if path.is_symlink():
+                continue
             relative = path.relative_to(ROOT).as_posix()
             if name.startswith(".env") and name != ".env.example":
                 continue
             raw = path.read_bytes()
-            text = raw.decode("utf-8-sig")
+            text = raw.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
             manifest.append({"path": relative, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
             patches.extend(difflib.unified_diff([], text.splitlines(keepends=True),
                                                 fromfile="/dev/null", tofile=f"b/{relative}"))
-    (ROOT / "artifacts/implementation.patch").write_text("".join(patches), encoding="utf-8")
-    (ROOT / "artifacts/source-manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (ROOT / "artifacts/implementation.patch").write_text("".join(patches), encoding="utf-8", newline="\n")
+    (ROOT / "artifacts/source-manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8", newline="\n")
     print(f"Reviewable diff + SHA-256 manifest: {len(manifest)} source/config/doc files")
 
 

@@ -1,5 +1,9 @@
 # Báo cáo kiểm chứng · 06/11/2026
 
+**Bổ sung ngày 08/11/2026:** đã triển khai job BTMH trong worker, migration Retry-After và cấu hình/runbook VPS. Kiểm chứng final revision: **130 tests Linux/PostgreSQL không skip, 10 nhóm smoke và 8 nhóm browser pass; 4 final images 0 High/Critical**. Nguồn tắt mặc định, chưa deploy VPS. Xem [BTMH_JOB_RESULTS](BTMH_JOB_RESULTS.md) và [BTMH_VPS_JOB](BTMH_VPS_JOB.md). Các số liệu dưới đây ghi lại những phase trước.
+
+**Cập nhật bước security gate:** đã build/chạy Docker Linux thật, **75 tests không skip, 9 nhóm container smoke và 8 nhóm browser QA pass**; bốn final images **0 High/Critical**, có SBOM. Chi tiết và image digests: [SECURITY_GATE_RESULTS.md](SECURITY_GATE_RESULTS.md). Các base image findings bên dưới là kết quả khảo sát ban đầu, đã được phân biệt với final images mới.
+
 Repository ban đầu rỗng, nhánh main chưa có commit. Đã đọc master prompt đầy đủ và infographic kiến trúc; calculator HTML cũ được nhắc trong yêu cầu chưa có trong tập file. Diff ở artifacts/implementation.patch thể hiện các file được thêm vào; không thay đổi Git config global, không tạo commit hoặc tuyên bố đã push/deploy.
 
 | Phase | Đầu ra | Bằng chứng / giới hạn |
@@ -8,7 +12,7 @@ Repository ban đầu rỗng, nhánh main chưa có commit. Đã đọc master p
 | 1 Math | Decimal library, validation, premium/spread/P&L/scenario, fees/break-even | Tests cố định + property test pass |
 | 2 Storage/ingestion | 7 bảng, 2 migrations, catalog metadata, append-only triggers, providers, CSV CLI, collect CLI, quarantine/daily reference/source status | 3 integration tests PostgreSQL 18.6 thật pass; fixtures và API tests pass; live provider chưa chạy do thiếu quyền/key |
 | 3 UI/API | 5 màn hình Vue, API read/calculate, history/missing/provenance, charts/CSV, backtest, scenario | Build/typecheck/lint pass; browser QA desktop/mobile và sample có nhãn |
-| 4 Security/production | Hardened Compose, role separation, secret mounts, Nginx CSP/rate, CI gates, Dokploy/backup/rollback docs | Config validation pass; Docker daemon/final image build+scan, HTTPS và S3 chưa được chạy |
+| 4 Security/production | Hardened Compose, file-backed secrets, role separation, Nginx CSP/rate, CI gates, Dokploy/backup/rollback docs | Docker Linux build/run + final image scans/SBOM + smoke pass; HTTPS và S3 vẫn chưa kiểm chứng |
 | 5 Handover | README, runbooks, artifacts, source manifest/diff | Chưa có domain/VPS/Dokploy/repo credentials nên không deploy |
 
 ## Lệnh đã chạy và kết quả
@@ -28,9 +32,10 @@ Repository ban đầu rỗng, nhánh main chưa có commit. Đã đọc master p
 | pip-audit | 0 known vulnerabilities, artifacts/pip-audit.json |
 | OSV Scanner 2.7.0 | Pass cho frontend/package-lock.json và Python requirements.lock |
 | Dependency SBOM | artifacts/dependency-sbom.json, CycloneDX 1.6 từ lockfiles; chưa phải final image SBOM |
-| Gitleaks 8.30.1 source directory | Không thấy leaks; Git history chưa có commit để quét |
+| Gitleaks 8.30.1 source/history | Không thấy leaks; lần cập nhật đã quét 1 commit và source, xem artifacts/security-gate/gitleaks-*.json |
 | Trivy 0.76.2 filesystem | Không có High/Critical trong phần source/config/dependency được scanner nhận diện; không thay thế final image scan |
-| Trivy remote base images | **Phát hiện High/Critical; xem phần dưới. Không coi release gate là pass.** |
+| Trivy remote base images ban đầu | Có High/Critical; giữ raw reports để đối chiếu với final images đã sửa |
+| Docker Linux security gate mới | 75 tests pass, 9 nhóm smoke pass, browser QA 8 nhóm pass; cả bốn final images 0 High/Critical, xem SECURITY_GATE_RESULTS.md |
 
 Có một warning của Starlette: TestClient dùng httpx bị deprecate để chuyển dần sang httpx2. Tests vẫn pass; chưa đổi HTTP client production theo warning của test helper.
 
@@ -44,13 +49,13 @@ Raw reports được giữ để review: `artifacts/base-*-scan.json`. Không ch
 - Node 24.22.1 Alpine build base có packages npm/corepack bị advisory. Đã nâng npm build tool lên 12.2.2, bỏ corepack; Node không nằm trong final frontend runtime. Cần scan build stage nếu policy CI yêu cầu, không coi nâng npm là bằng chứng đã hết mọi package của base.
 - Backup image cũng cập nhật APK, bỏ gosu; AWS CLI/OS dependencies phát sinh cần quét sau build.
 
-**Release đang bị chặn** cho đến khi build và quét final backend/frontend/PostgreSQL/backup images thành công, xử lý mọi Critical/High còn lại và chạy container smoke trên Linux. CI đã cấu hình fail gate; chưa có CI run từ remote được xác minh. Không dùng việc source scans pass để bỏ qua gate này.
+**Security gate local trên Linux đã pass**, với bằng chứng final images riêng trong artifacts/security-gate. Các đoạn “chưa build/scan final image” trong mô tả khảo sát trước đó được cập nhật bởi SECURITY_GATE_RESULTS.md. CI đã dùng cùng runner; chưa có remote CI run được xác minh. Production vẫn cần push/pin các image đã kiểm chứng, triển khai và kiểm tra HTTPS/VPS/S3 thực tế.
 
 ## Phần cần người dùng cung cấp
 
 1. File `Gold_Premium_Infographic_Calculator.html` cũ để hoàn tất đối chiếu với đúng source ban đầu. Hiện đã đối chiếu được infographic kiến trúc và master prompt.
 2. Quyền/contract cho dữ liệu domestic và FX, hoặc CSV thật có quyền lưu/hiển thị; subscription/API key Metals.Dev nếu dùng spot tự động.
-3. Git/registry và Docker Linux build environment để chạy CI, scan final images, ghi digests và kiểm thử Compose runtime.
+3. Registry production để push đúng images đã kiểm chứng và xác nhận digests remote. Docker Linux build/test local đã hoàn tất; CI được cập nhật nhưng chưa tuyên bố remote run pass.
 4. Domain/DNS, VPS/Dokploy access để kiểm tra HTTPS, firewall, ingress/network thực tế và deploy.
 5. S3 bucket, region, KMS key và IAM phù hợp để kiểm chứng backup upload, retention và restore drill trên VPS.
 

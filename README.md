@@ -4,9 +4,11 @@
 
 **Trạng thái:** source code đã được triển khai và có kiểm thử thực tế; chưa triển khai VPS. Database production khởi tạo không có báo giá. SJC/PNJ và FX tự động còn bị khóa vì chưa xác minh quyền sử dụng; Metals.Dev cần hợp đồng/subscription và API key. Xem [báo cáo kiểm chứng](docs/IMPLEMENTATION_STATUS.md) để phân biệt phần đã chạy và phần còn chờ.
 
+Đã bổ sung **job crawl BTMH trên worker**, tắt mặc định: xem [hướng dẫn VPS/Dokploy](docs/BTMH_VPS_JOB.md) và [kết quả 130 tests Linux/PostgreSQL cùng final image scans](docs/BTMH_JOB_RESULTS.md). Lệnh riêng `python -m app.jobs.collect_daily --source btmh`; chỉ bật sau khi xác nhận quyền và convention đơn vị/timezone. Không có giá BTMH thật được seed vào database.
+
 ## Chạy local bằng Docker Compose
 
-Cần Docker Engine/Desktop và Docker Compose hỗ trợ secrets từ environment. Chạy từ thư mục repository:
+Cần Docker Engine/Desktop chạy Linux containers và Docker Compose. Secrets dùng file để tương thích root filesystem read-only. Chạy từ thư mục repository:
 
 ```bash
 python infra/init-local-env.py
@@ -16,7 +18,7 @@ docker compose ps
 curl --fail http://127.0.0.1:8080/api/v1/health/ready
 ```
 
-Mở http://127.0.0.1:8080. Script tạo `.env` bằng secrets ngẫu nhiên, không ghi đè file cũ. API/DB không có host ports. Local chỉ bind frontend trên loopback. Không dùng `compose.local.yaml` trên Dokploy.
+Mở http://127.0.0.1:8080. Script tạo secrets ngẫu nhiên trong thư mục private `.secrets`, `.env` chỉ giữ đường dẫn/cấu hình và không ghi đè file cũ. Cả hai bị loại khỏi Git và Docker build context. API/DB không có host ports. Local chỉ bind frontend trên loopback. Không dùng `compose.local.yaml` trên Dokploy.
 
 Migration chạy một lần qua service `migrate`; sau đó API dùng role `gold_reader`, CLI/job dùng `gold_ingestor`. CLI đọc `/run/secrets` trực tiếp cả khi được chạy bằng `docker compose exec`.
 
@@ -46,7 +48,7 @@ npm run typecheck
 npm run build
 ```
 
-Ba test PostgreSQL chỉ chạy khi có `TEST_DATABASE_URL`, tên database phải bắt đầu `gold_test`. **Chỉ trỏ vào DB test dùng xong bỏ**; test sẽ truncate/drop schema trong DB đó.
+Các test PostgreSQL chỉ chạy khi có `TEST_DATABASE_URL`, tên database phải bắt đầu `gold_test`. **Chỉ trỏ vào DB test dùng xong bỏ**; test sẽ truncate/drop schema trong DB đó.
 
 ```bash
 TEST_DATABASE_URL=postgresql+psycopg://postgres:TEST_PASSWORD@127.0.0.1:5432/gold_test_ci python -m pytest backend/tests/test_postgres.py -v
@@ -57,6 +59,22 @@ Windows có thể tải binary PostgreSQL chính thức từ EDB vào `.tools/po
 QA bundle tĩnh chỉ trên loopback: `python infra/serve_preview.py` (http://127.0.0.1:8765). Thêm `--sample` chỉ cho QA có banner **SAMPLE DATA — NOT REAL MARKET DATA**. Không dùng script này trên VPS. Test trình duyệt ở `tests/browser_ui.cjs` nhận `PLAYWRIGHT_MODULE` và `BROWSER_EXECUTABLE` của máy test.
 
 ## Tài liệu vận hành
+
+Security gate đã chạy trên Docker Linux: **75 tests, 9 smoke groups và 8 browser checks pass**; bốn final images có **0 High/Critical** tại thời điểm quét. Xem [báo cáo security gate](docs/SECURITY_GATE_RESULTS.md). Chưa triển khai VPS/HTTPS hay kiểm thử S3/KMS thực tế.
+
+Chạy lại project test riêng, không dùng credentials production:
+
+```bash
+python infra/security_gate.py prepare
+python infra/security_gate.py build
+python infra/security_gate.py start
+python infra/security_gate.py test
+python infra/container_smoke.py --base-url http://127.0.0.1:18080 --project-name gold-security-gate --env-file .tools/security-gate/.env --compose-file compose.yaml --compose-file .tools/security-gate/compose.gate.yaml --report artifacts/security-gate/container-smoke.json
+python infra/security_gate.py scan
+python infra/security_gate.py stop
+```
+
+Trivy cần nằm trong `.tools/security/trivy` (Linux) hoặc `trivy.exe` (Windows); Windows có thể truyền `--docker` bằng đường dẫn Docker CLI khi chưa có trong PATH. Test giữ volume riêng `gold-security-gate_pgdata`, không xóa volume ứng dụng.
 
 - [Kiến trúc và quyết định](docs/ARCHITECTURE.md)
 - [Nguồn, quyền dữ liệu và blockers](docs/DATA_SOURCES.md)

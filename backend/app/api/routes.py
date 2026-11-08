@@ -210,6 +210,7 @@ def sources(db: Db):
                 "latest_observed_at": latest_observed,
                 "reference_types": sorted(kinds),
                 "last_error_code": source.last_error_code,
+                "next_poll_after": source.next_poll_after,
                 "status": latest_run.status if latest_run else "not_configured",
                 "quota": "Xem hợp đồng/dashboard nhà cung cấp; chưa có credentials để xác minh",
             }

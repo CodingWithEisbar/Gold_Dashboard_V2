@@ -7,6 +7,7 @@ from app.models import DataSource, GoldProduct
 SOURCES = [
     ("sjc", "SJC", "https://www.sjc.com.vn/gia-vang-online"),
     ("pnj", "PNJ", "https://giavang.pnj.com.vn/"),
+    ("btmh", "Bảo Tín Mạnh Hải", "https://baotinmanhhai.vn/bang-gia-vang"),
     ("metals-dev", "Metals.Dev", "https://www.metals.dev/docs"),
     ("manual-spot", "Spot nhập CSV", "https://www.metals.dev/docs"),
     (
@@ -20,6 +21,13 @@ PRODUCTS = [
     ("sjc-bar-1c-hcm", "sjc", "BAR_1_CHI", "SJC vàng miếng 1 chỉ", "HCM"),
     ("sjc-ring-9999-hcm", "sjc", "RING_9999", "SJC nhẫn 9999", "HCM"),
     ("pnj-ring-9999-hcm", "pnj", "RING_9999", "PNJ nhẫn 9999", "HCM"),
+    (
+        "btmh-kgb-24k-listed",
+        "btmh",
+        "KIM_GIA_BAO_24K",
+        "BTMH Kim Gia Bảo 24K (giá niêm yết)",
+        "BTMH_LISTED",
+    ),
 ]
 
 

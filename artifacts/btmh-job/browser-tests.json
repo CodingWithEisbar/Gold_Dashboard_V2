@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "checked_at": "2026-11-07T17:57:54.284Z",
+  "base_url": "http://127.0.0.1:18080",
+  "checks": [
+    "empty market state",
+    "five screens",
+    "missing history rejected",
+    "server Decimal scenario loss 11m",
+    "scenario chart",
+    "mobile no overflow",
+    "keyboard navigation",
+    "no runtime JS or CSP errors"
+  ]
+}

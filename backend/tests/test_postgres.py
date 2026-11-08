@@ -3,7 +3,7 @@
 import os
 import shutil
 import subprocess
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -17,7 +17,9 @@ from sqlalchemy.orm import Session
 from app.catalog import seed_catalog
 from app.config import Settings, get_settings
 from app.ingestion.service import ingest, reconcile_day
-from app.models import DailyReferencePrice, QuoteSnapshot
+from app.jobs.collect_daily import collect_source
+from app.models import DailyReferencePrice, DataSource, QuoteSnapshot
+from app.providers.btmh import BtmhGoldProvider, parse_btmh
 from app.providers.csv_provider import parse_csv
 
 pytestmark = pytest.mark.postgres
@@ -125,5 +127,60 @@ def test_pg_dump_restore(pg_engine, tmp_path):
         capture_output=True,
     )  # noqa: S603
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT COUNT(*) FROM gold_products")).scalar() == 4
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "b8e3ab201001"
+        assert connection.execute(text("SELECT COUNT(*) FROM gold_products")).scalar() == 5
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "c9d4ef202601"
+
+
+def test_pg_btmh_job_uses_nonblocking_source_lock(pg_engine, monkeypatch):
+    engine, _ = pg_engine
+    settings = Settings(app_env="test", database_url="sqlite://")
+    with Session(engine) as session:
+        seed_catalog(session)
+        session.commit()
+    monkeypatch.setattr(
+        BtmhGoldProvider, "fetch", lambda self: pytest.fail("Concurrent job made an HTTP request")
+    )
+    with engine.connect() as held, Session(engine) as session:
+        held.execute(text("SELECT pg_advisory_xact_lock(74198015)"))
+        report = collect_source(session, "btmh", settings)
+        assert report["status"] == "skipped" and report["reason"] == "source_job_already_running"
+        held.rollback()
+
+
+def test_pg_btmh_job_with_ingestor_permissions_and_restart_idempotency(pg_engine, monkeypatch):
+    engine, _ = pg_engine
+    settings = Settings(app_env="test", database_url="sqlite://")
+    now = datetime(2026, 11, 5, 11, tzinfo=UTC)
+    fixture = (Path(__file__).parent / "fixtures/btmh.sample.html").read_bytes()
+    rows = parse_btmh(fixture, now=now)
+    monkeypatch.setattr(BtmhGoldProvider, "fetch", lambda self: rows)
+    with Session(engine) as session:
+        seed_catalog(session)
+        session.get(DataSource, "btmh").license_status = "licensed"
+        session.commit()
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='gold_test_ingestor') "
+                "THEN CREATE ROLE gold_test_ingestor NOLOGIN; END IF; END $$"
+            )
+        )
+        connection.execute(text("GRANT USAGE ON SCHEMA public TO gold_test_ingestor"))
+        connection.execute(text("GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA public TO gold_test_ingestor"))
+        connection.execute(text("GRANT UPDATE ON data_sources, daily_reference_prices TO gold_test_ingestor"))
+        connection.execute(text("GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO gold_test_ingestor"))
+    with engine.connect() as connection:
+        connection.execute(text("SET ROLE gold_test_ingestor"))
+        connection.commit()
+        try:
+            with Session(bind=connection) as session:
+                assert collect_source(session, "btmh", settings, now=now)["inserted"] == 1
+            # A new session simulates a separate scheduled process with no in-memory dedup state.
+            with Session(bind=connection) as session:
+                result = collect_source(session, "btmh", settings, now=now + timedelta(minutes=30))
+                assert result["status"] == "success" and result["duplicates"] == 1
+                assert session.scalar(select(QuoteSnapshot)).ask.as_tuple().exponent == -8
+        finally:
+            connection.rollback()
+            connection.execute(text("RESET ROLE"))
+            connection.commit()

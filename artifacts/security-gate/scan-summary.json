@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-11-06T14:31:15.813440+00:00",
+  "passed": true,
+  "images": [
+    {
+      "image": "gold-backend:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    },
+    {
+      "image": "gold-frontend:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    },
+    {
+      "image": "gold-postgres:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    },
+    {
+      "image": "gold-backup:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    }
+  ]
+}

@@ -68,6 +68,7 @@ def ingest(
             if existing.raw_payload_hash != obs.raw_payload_hash:
                 raise ValueError("Conflicting duplicate: cần reconciliation, không ghi đè snapshot")
             counts["duplicates"] += 1
+            counts["quarantined"] += int(existing.quality_flag == "quarantined")
             continue
         previous = session.scalar(
             select(model)

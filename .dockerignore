@@ -3,6 +3,7 @@
 .env.*
 .venv
 .tools
+.secrets
 **/node_modules
 **/dist
 **/__pycache__

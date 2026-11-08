@@ -1,0 +1,19 @@
+{
+  "parser_version": "btmh-html-v1",
+  "input": "Previously inspected public HTML, offline parse only",
+  "written_to_database": false,
+  "observations": [
+    {
+      "kind": "gold",
+      "provider_id": "btmh",
+      "product_id": "btmh-kgb-24k-listed",
+      "provider_timestamp": "2026-11-07T18:43:38+07:00",
+      "bid": "136500000",
+      "ask": "140500000",
+      "value": null,
+      "unit": "VND/luong",
+      "reference_type": "official",
+      "raw_payload_hash": "b7a6bcc0a36dddab34f9285f4d41a174bf574311b941fd47d1c1542d965b0b7e"
+    }
+  ]
+}

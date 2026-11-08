@@ -12,6 +12,8 @@ Daily selection chạy lại cho các ngày CSV vừa nhập; không chạy vòn
 
 ## Khi nguồn thay đổi hoặc lỗi
 
+BTMH: xem [job VPS/Dokploy](BTMH_VPS_JOB.md). Dùng `python -m app.jobs.collect_daily --source btmh` trong worker cho lịch riêng; `status=skipped` không phải đã fetch thành công. Parser kiểm tra đúng bảng vàng, thứ tự cột, sản phẩm, purity, đơn vị và timestamp; sai cấu trúc thì dừng. Giá quá cũ không được gắn ngày mới. Source license trong catalog và ba cờ xác nhận phải đầy đủ trước HTTP; tắt lịch/flag hoặc `catalog --revoke-btmh` để dừng những lần chạy tiếp theo. Giữ failure alert cả khi duplicate vẫn thuộc quarantine.
+
 Parser Metals.Dev sai status/unit/schema → source_unavailable, không ghi số. Retry tối đa 3 lần, backoff+jitter, timeout 10s, response cap 256KiB, redirect tắt. Nếu quota sắp hết: giảm lịch ở Dokploy hoặc tạm tắt provider; không thêm vòng retry vô hạn. Domestic/FX vẫn import CSV có quyền. Không bypass robots/CAPTCHA để “sửa” lỗi nguồn.
 
 ## Update / rollback

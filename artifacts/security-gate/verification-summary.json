@@ -1,0 +1,40 @@
+{
+  "verified_at": "2026-11-06T14:32:16.011089+00:00",
+  "scope": "local Docker Linux security gate; no VPS deployment",
+  "passed": true,
+  "linux_tests": 75,
+  "container_smoke_groups": 9,
+  "browser_checks": 8,
+  "images": [
+    {
+      "image": "gold-backend:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0,
+      "digest": "sha256:3d2643c1d499bc070a639c84427ce57cdf5366df15986e4a0feba60242619650"
+    },
+    {
+      "image": "gold-frontend:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0,
+      "digest": "sha256:3a4149c5cd71ce60695f1196b645ed10818b8f7da3f5af01242ec24d42e46dd7"
+    },
+    {
+      "image": "gold-postgres:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0,
+      "digest": "sha256:d610ff8574feeb486cba9c75b2d1df5f8234177e5879d913e8d308281cfde16f"
+    },
+    {
+      "image": "gold-backup:gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0,
+      "digest": "sha256:3a4809629cc5f31d677bfd714cab68908ae146e23adedcdd1e7e9159ac55ace2"
+    }
+  ],
+  "not_verified": [
+    "VPS HTTPS/HSTS/firewall",
+    "Dokploy deployment",
+    "S3/KMS/retention",
+    "live market data licensing"
+  ]
+}

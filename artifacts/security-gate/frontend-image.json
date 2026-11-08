@@ -1,0 +1,85 @@
+[
+    {
+        "Id": "sha256:3a4149c5cd71ce60695f1196b645ed10818b8f7da3f5af01242ec24d42e46dd7",
+        "RepoTags": [
+            "gold-frontend:gate"
+        ],
+        "RepoDigests": [
+            "gold-frontend@sha256:3a4149c5cd71ce60695f1196b645ed10818b8f7da3f5af01242ec24d42e46dd7"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-11-06T14:16:06.692575296Z",
+        "Config": {
+            "User": "101:101",
+            "ExposedPorts": {
+                "8080/tcp": {}
+            },
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "NGINX_VERSION=1.30.6",
+                "PKG_RELEASE=1",
+                "DYNPKG_RELEASE=1",
+                "NJS_VERSION=1.0.2",
+                "NJS_RELEASE=1"
+            ],
+            "Entrypoint": [
+                "nginx",
+                "-g",
+                "daemon off;"
+            ],
+            "WorkingDir": "/",
+            "Labels": {
+                "com.docker.compose.project": "gold-security-gate",
+                "com.docker.compose.service": "frontend",
+                "com.docker.compose.version": "5.6.1",
+                "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>",
+                "org.opencontainers.image.created": "2026-10-19T01:52:08.083Z",
+                "org.opencontainers.image.description": "Unprivileged NGINX Dockerfiles",
+                "org.opencontainers.image.licenses": "Apache-2.0",
+                "org.opencontainers.image.revision": "bb7393196554e11f7ba95452856d8b5faff217bf",
+                "org.opencontainers.image.source": "https://github.com/nginx/docker-nginx-unprivileged",
+                "org.opencontainers.image.title": "docker-nginx-unprivileged",
+                "org.opencontainers.image.url": "https://github.com/nginx/docker-nginx-unprivileged",
+                "org.opencontainers.image.version": "1.30.6-alpine"
+            },
+            "StopSignal": "SIGQUIT",
+            "ArgsEscaped": true
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 99053102,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:74d97c428c51a828f9051a7a40a53ff1fc99e54fc30323ce36760701b0b7f711",
+                "sha256:b8edda8641ac49fd7047a93743731efdb098fe4323b0293615a4daf1a6ff6b07",
+                "sha256:ea99b346cd2fd6e72cbcf6e367eeb09afad17bf7c005973dea3e13b74169fa4f",
+                "sha256:2905b9963ff30d787a9c75efa70a68f4372091a4c6794da3c08b5f82237dfc26",
+                "sha256:f3fc23f90da4deec07e69c635dcb622701554b86ca6169b4ce36067c949ace69",
+                "sha256:f3ab0add3da3d203af0bca76efed2ff7070cbdedef5c51bfd89b5013011c9e97",
+                "sha256:76d28e61993f7e88d78daa293c15609e9ff96037fbfd62f89adfe6529064084b",
+                "sha256:00052d18c950c80abaec242318f8bd760ef299966f87d8c6b116f16016f68892",
+                "sha256:901452d457987140a54c0dffb3328676c46b4022a79e41394a69b57ddaf6b3b8",
+                "sha256:383b1a4a638289d06744271fc08e520605e1fc90880ca1c52152559b837f461c",
+                "sha256:c655d6b7d9292bf45692d4c25961c6626d6b3f1c8513ee1d0e6d81f297fee452",
+                "sha256:6696d16d600cdb3522888ea286f970d23d6162141ba34b306259e3e0cdc1df39"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-11-06T14:16:07.08765148Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:3a4149c5cd71ce60695f1196b645ed10818b8f7da3f5af01242ec24d42e46dd7",
+            "size": 856
+        },
+        "Identity": {
+            "Build": [
+                {
+                    "Ref": "jerl8iq71le0eknb2jgg6irj2",
+                    "CreatedAt": "2026-11-06T14:16:08.022244725Z"
+                }
+            ]
+        }
+    }
+]

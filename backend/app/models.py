@@ -47,6 +47,7 @@ class DataSource(Base):
     license_note: Mapped[str] = mapped_column(String(1000), default="Chưa xác minh quyền tự động hóa")
     last_success_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     last_error_code: Mapped[str | None] = mapped_column(String(80))
+    next_poll_after: Mapped[datetime | None] = mapped_column(UTCDateTime())
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 

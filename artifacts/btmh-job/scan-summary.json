@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-11-07T17:56:46.292926+00:00",
+  "passed": true,
+  "images": [
+    {
+      "image": "gold-backend:btmh-gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    },
+    {
+      "image": "gold-frontend:btmh-gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    },
+    {
+      "image": "gold-postgres:btmh-gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    },
+    {
+      "image": "gold-backup:btmh-gate",
+      "exit_code": 0,
+      "sbom_exit_code": 0
+    }
+  ]
+}

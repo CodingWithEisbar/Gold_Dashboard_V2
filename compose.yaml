@@ -80,7 +80,12 @@ services:
       DATABASE_PASSWORD_FILE: /run/secrets/db_ingestor_password
       XAU_API_KEY: ${XAU_API_KEY:-}
       METALS_LICENSE_CONFIRMED: ${METALS_LICENSE_CONFIRMED:-false}
-      SOURCE_ALLOWLIST: api.metals.dev
+      BTMH_ENABLED: ${BTMH_ENABLED:-false}
+      BTMH_LICENSE_CONFIRMED: ${BTMH_LICENSE_CONFIRMED:-false}
+      BTMH_CONVENTIONS_CONFIRMED: ${BTMH_CONVENTIONS_CONFIRMED:-false}
+      BTMH_MIN_INTERVAL_MINUTES: ${BTMH_MIN_INTERVAL_MINUTES:-30}
+      BTMH_MAX_AGE_HOURS: ${BTMH_MAX_AGE_HOURS:-24}
+      SOURCE_ALLOWLIST: ${SOURCE_ALLOWLIST:-api.metals.dev,baotinmanhhai.vn}
       REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-10}
     secrets: [db_ingestor_password]
     # Dokploy Compose Jobs exec into a running container. This process does no scheduling.
@@ -117,7 +122,7 @@ networks:
   outbound: {}
   ingress: {}
 secrets:
-  db_admin_password: {environment: DB_ADMIN_PASSWORD}
-  db_owner_password: {environment: DB_OWNER_PASSWORD}
-  db_reader_password: {environment: DB_READER_PASSWORD}
-  db_ingestor_password: {environment: DB_INGESTOR_PASSWORD}
+  db_admin_password: {file: "${DB_ADMIN_PASSWORD_FILE:?Set private secret file}"}
+  db_owner_password: {file: "${DB_OWNER_PASSWORD_FILE:?Set private secret file}"}
+  db_reader_password: {file: "${DB_READER_PASSWORD_FILE:?Set private secret file}"}
+  db_ingestor_password: {file: "${DB_INGESTOR_PASSWORD_FILE:?Set private secret file}"}

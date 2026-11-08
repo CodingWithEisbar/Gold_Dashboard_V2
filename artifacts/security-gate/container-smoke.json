@@ -1,0 +1,16 @@
+{
+  "checked_at": "2026-11-06T14:22:42.120213+00:00",
+  "base_url": "http://127.0.0.1:18080",
+  "passed": true,
+  "checks": [
+    "Nginx proxies API liveness/readiness",
+    "Production CSP and browser security headers",
+    "Hidden files, source maps, mutation/admin/docs routes are unavailable",
+    "Empty production database never supplies fabricated quotes; CSV export works",
+    "Decimal scenario calculation works through production proxy",
+    "Non-root, read-only, cap-drop, no-new-privileges and resource limits on every service",
+    "Database/API ports private; frontend loopback-only; database/API networks internal",
+    "Migration completed and every long-running service is healthy",
+    "Nginx configuration valid under runtime user; API authenticates as read-only gold_reader"
+  ]
+}

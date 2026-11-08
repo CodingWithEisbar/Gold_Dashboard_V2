@@ -1,0 +1,75 @@
+[
+    {
+        "Id": "sha256:b24b3108db30c947246a1f48f1d5e3ef285d6a2c6260d96c0fa99ab84b893c23",
+        "RepoTags": [
+            "gold-backup:btmh-gate"
+        ],
+        "RepoDigests": [
+            "gold-backup@sha256:b24b3108db30c947246a1f48f1d5e3ef285d6a2c6260d96c0fa99ab84b893c23"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-11-06T14:16:21.117344293Z",
+        "Config": {
+            "User": "70:70",
+            "ExposedPorts": {
+                "5432/tcp": {}
+            },
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "GOSU_VERSION=1.19",
+                "LANG=en_US.utf8",
+                "PG_MAJOR=18",
+                "PG_VERSION=18.6",
+                "PG_SHA256=555610c24d53e4316da5b7d3fc25c279d96856d5e0e23ee308c328c5fa881d9f",
+                "DOCKER_PG_LLVM_DEPS=llvm21-dev \t\tclang21",
+                "PGDATA=/var/lib/postgresql/18/docker"
+            ],
+            "Cmd": [
+                "sleep",
+                "infinity"
+            ],
+            "Volumes": {
+                "/var/lib/postgresql": {}
+            },
+            "WorkingDir": "/",
+            "StopSignal": "SIGINT",
+            "ArgsEscaped": true
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 688189682,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:75f1d9657d880da5f75298e8f40e9928bb6e260c50d26f97af196845307e3064",
+                "sha256:b2ce3aebc78681ccaadbfb9c069dfe1de2fd79dbc82ca875e1d06749c59f4bf1",
+                "sha256:fd6cdf8865d9099e98d07d09a16985d9e84a8773fe43e43037350839ff63775a",
+                "sha256:7510cbb0bc6a4a45feacd4971eb0bc235acf21669da12f6d7e892bdcd1aa0a8a",
+                "sha256:8ff1b6b33f6a9937ff8cccd55caacf69f05832290472320932ebc2a79c67aefb",
+                "sha256:e506043f2265a33424f704f4cf9815ac65d9c2e48c46d219e2712ba33066bdb0",
+                "sha256:e43d05456cdf3dacf26ba2fb9e120f05c2e69e04dc1f2111e9dd6fd6d7727ce2",
+                "sha256:d6cd89ac82f32c32ba1e750fc3da116f9b8895f6db9f58d5f40c017191920ee0",
+                "sha256:89ca1730a42b77e82de43d9720d18bbcb72a18f756f6ada212e977d50bf0ca1e",
+                "sha256:4797d1fb8705e1c1449da92a2ef8b1538ce0fd04783b4e4f2ec8a2b9524d3627",
+                "sha256:2fc59f48fa6da19bff9f76889ff50ed9449dfdc876e2b55ce29a3d26c7d44a39",
+                "sha256:86a8e8038e410c16ed49478791abc96c76bfa74814f78392249624ab0d300fe3"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-11-07T17:55:02.614675941Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:b24b3108db30c947246a1f48f1d5e3ef285d6a2c6260d96c0fa99ab84b893c23",
+            "size": 856
+        },
+        "Identity": {
+            "Build": [
+                {
+                    "Ref": "sddqfhwdpu3iicckw4e5atrya",
+                    "CreatedAt": "2026-11-07T17:55:02.626149679Z"
+                }
+            ]
+        }
+    }
+]

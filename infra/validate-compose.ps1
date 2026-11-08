@@ -1,6 +1,10 @@
 $ErrorActionPreference = 'Stop'
+$validationRoot = Join-Path $PSScriptRoot '..\.tools\compose-validation'
+New-Item -ItemType Directory -Path $validationRoot -Force | Out-Null
 foreach ($name in @('DB_ADMIN_PASSWORD', 'DB_OWNER_PASSWORD', 'DB_READER_PASSWORD', 'DB_INGESTOR_PASSWORD')) {
-    [Environment]::SetEnvironmentVariable($name, 'validation-only-placeholder-not-a-secret', 'Process')
+    $path = Join-Path $validationRoot $name.ToLowerInvariant()
+    Set-Content -LiteralPath $path -Value 'validation-only-placeholder-not-a-secret' -NoNewline
+    [Environment]::SetEnvironmentVariable($name + '_FILE', [IO.Path]::GetFullPath($path), 'Process')
 }
 & "$PSScriptRoot\..\.tools\docker-compose.exe" -f "$PSScriptRoot\..\compose.yaml" config --quiet
 if ($LASTEXITCODE -ne 0) { throw 'Compose production config failed' }
@@ -14,6 +18,12 @@ foreach ($property in $configuration.services.PSObject.Properties) {
     if ($property.Name -in @('db','api','worker') -and $service.ports) { throw 'Private service published ports' }
 }
 if (-not $configuration.networks.database.internal -or -not $configuration.networks.application.internal) { throw 'Internal network missing' }
+$btmhVariables = @('BTMH_ENABLED','BTMH_LICENSE_CONFIRMED','BTMH_CONVENTIONS_CONFIRMED','BTMH_MIN_INTERVAL_MINUTES','BTMH_MAX_AGE_HOURS')
+foreach ($name in $btmhVariables) {
+    if ($null -eq $configuration.services.worker.environment.$name) { throw "Missing worker configuration: $name" }
+    if ($null -ne $configuration.services.api.environment.$name) { throw "Crawler configuration leaked into API: $name" }
+}
+if ($configuration.services.worker.networks.PSObject.Properties.Name -contains 'ingress') { throw 'Worker must not have ingress' }
 & "$PSScriptRoot\..\.tools\docker-compose.exe" -f "$PSScriptRoot\..\compose.yaml" -f "$PSScriptRoot\..\compose.local.yaml" config --quiet
 if ($LASTEXITCODE -ne 0) { throw 'Compose local config failed' }
 $env:S3_BUCKET='validation-bucket'

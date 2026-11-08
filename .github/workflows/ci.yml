@@ -78,26 +78,19 @@ jobs:
           .tools/security/trivy fs --scanners vuln,misconfig,secret --skip-dirs .tools --skip-dirs artifacts --skip-dirs frontend/node_modules --severity HIGH,CRITICAL --exit-code 1 --format json --output artifacts/trivy-fs.json .
       - name: Build hardened containers and validate deployment
         run: |
-          python infra/init-local-env.py
-          docker compose config --quiet
-          docker compose build
-          docker compose -f compose.yaml -f compose.local.yaml up -d --wait --wait-timeout 180
-          python infra/container_smoke.py
+          python infra/security_gate.py prepare
+          python infra/security_gate.py build
+          python infra/security_gate.py start
+          python infra/security_gate.py test
+          python infra/container_smoke.py --base-url http://127.0.0.1:18080 --project-name gold-security-gate --env-file .tools/security-gate/.env --compose-file compose.yaml --compose-file .tools/security-gate/compose.gate.yaml --check-btmh-job --report artifacts/security-gate/container-smoke.json
       - name: Final image scan and SBOM
         run: |
-          for image in gold-backend:local gold-frontend:local gold-postgres:local; do
-            name=${image%:*}
-            .tools/security/trivy image --severity HIGH,CRITICAL --exit-code 1 --format json --output artifacts/${name}-scan.json "$image"
-            .tools/security/trivy image --format cyclonedx --output artifacts/${name}-sbom.json "$image"
-          done
-          docker build -t gold-backup:local -f infra/backup/Dockerfile .
-          .tools/security/trivy image --severity HIGH,CRITICAL --exit-code 1 --format json --output artifacts/backup-scan.json gold-backup:local
-          .tools/security/trivy image --format cyclonedx --output artifacts/backup-sbom.json gold-backup:local
+          python infra/security_gate.py scan
       - name: Logs and teardown
         if: always()
         run: |
-          docker compose logs --no-color --tail 100 > artifacts/compose-logs.txt || true
-          docker compose down || true
+          docker compose --project-name gold-security-gate --env-file .tools/security-gate/.env -f compose.yaml -f .tools/security-gate/compose.gate.yaml logs --no-color --tail 100 > artifacts/compose-logs.txt || true
+          python infra/security_gate.py stop || true
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: verification-reports, path: artifacts/, retention-days: 14}

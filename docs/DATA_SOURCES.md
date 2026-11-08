@@ -1,6 +1,6 @@
 # Nguồn và quyền dữ liệu
 
-Kiểm tra ngày **06/11/2026, Asia/Ho_Chi_Minh**. Khả năng xem trang không phải quyền thu thập/lưu/tái phân phối. robots.txt không phải giấy phép.
+Khảo sát ban đầu **06/11/2026, Asia/Ho_Chi_Minh**; bổ sung Bảo Tín Mạnh Hải **08/11/2026**. Khả năng xem trang không phải quyền thu thập/lưu/tái phân phối. robots.txt không phải giấy phép.
 
 | Nguồn | Live API | Historical API | CSV | Trạng thái |
 |---|---|---|---|---|
@@ -9,6 +9,8 @@ Kiểm tra ngày **06/11/2026, Asia/Ho_Chi_Minh**. Khả năng xem trang không 
 | Vietcombank | Trang niêm yết; chưa xác minh quyền tự động | Chưa xác minh | Có, phải ghi đúng convention | BLOCKED tự động |
 | Metals.Dev spot | Adapter endpoint được tài liệu hóa, tắt mặc định | Timeseries có tài liệu, chưa tích hợp backfill | Có | Cần subscription, key và xác nhận quyền |
 | FX reference_mid | Chưa chọn API có contract/đơn vị đã kiểm chứng | Chưa xác minh | Có | manual-fx |
+| GiaVangVietNam.com | Có hướng dẫn widget; chưa xác minh API JSON được cấp phép | Có trang biểu đồ, chưa có historical API được xác minh | Chỉ khi có quyền | Chưa bật ingestion; [khảo sát chi tiết](SOURCE_RESEARCH_GIAVANGVIETNAM.md) |
+| Bảo Tín Mạnh Hải | Adapter HTTP HTML Kim Gia Bảo 24K đã triển khai, tắt mặc định; chưa có xác nhận quyền của operator | Có biểu đồ/nhãn Export Excel, chưa xác minh tải và quyền backfill | Có, catalog BTMH riêng; yêu cầu quyền và chuẩn hóa đúng | Cần xác nhận quyền/đơn vị/timezone; [job VPS](BTMH_VPS_JOB.md), [khảo sát](SOURCE_RESEARCH_BAOTINMANHHAI.md) |
 
 SJC [giá niêm yết](https://www.sjc.com.vn/gia-vang-online), PNJ [trang giá](https://giavang.pnj.com.vn/) truy cập được; PNJ chỉ trả shell JS qua công cụ đọc. Thử đọc robots tại ba host qua web tool không thành công. Không suy ra “được phép” hoặc “bị cấm” từ lỗi này. Không thử endpoint ẩn, CAPTCHA hoặc bot bypass. Chưa có bằng chứng hợp đồng của người dùng; adapter tự động cho các nguồn này không được bật.
 
