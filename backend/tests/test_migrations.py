@@ -14,7 +14,7 @@ def test_migration_upgrade_downgrade(tmp_path, monkeypatch):
     cfg = Config(str(Path(__file__).parents[1] / "alembic.ini"))
     command.upgrade(cfg, "head")
     engine = create_engine(url)
-    assert len(inspect(engine).get_table_names()) == 8
+    assert len(inspect(engine).get_table_names()) == 9
     command.check(cfg)
     command.downgrade(cfg, "base")
     assert inspect(engine).get_table_names() == ["alembic_version"]

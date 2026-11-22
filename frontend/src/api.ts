@@ -1,5 +1,5 @@
 export interface Product { id: string; name: string; provider_id: string; product_code: string; location: string; purity: string }
-export interface Quote { bid: string; ask: string; business_date: string; source: string; observed_at: string; data_status: string; reference_type: string; label: string; spread_vnd_per_luong: string }
+export interface Quote { time_basis?: string; bid: string; ask: string; business_date: string; source: string; observed_at: string; data_status: string; reference_type: string; label: string; spread_vnd_per_luong: string }
 export interface HistoryRow extends Partial<Quote> {
   business_date: string; data_status: string; premium_status?: string;
   premium?: { world_reference_vnd_per_luong: string; premium_pct: string; premium_absolute_vnd_per_luong: string } | null;

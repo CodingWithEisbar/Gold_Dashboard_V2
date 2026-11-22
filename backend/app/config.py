@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     database_password_file: Path | None = None
     xau_api_key: SecretStr = SecretStr("")
     metals_license_confirmed: bool = False
+    investing_enabled: bool = False
+    sjc_enabled: bool = False
+    doji_enabled: bool = False
     btmh_enabled: bool = False
     btmh_license_confirmed: bool = False
     btmh_conventions_confirmed: bool = False

@@ -9,6 +9,7 @@ from app.config import Settings
 from app.models import (
     DailyReferencePrice,
     DataSource,
+    FuturesSnapshot,
     FxSnapshot,
     GoldProduct,
     IngestionRun,
@@ -18,7 +19,7 @@ from app.models import (
 from app.providers.base import Observation
 
 VN = ZoneInfo("Asia/Ho_Chi_Minh")
-MODELS = {"gold": QuoteSnapshot, "spot": SpotSnapshot, "fx": FxSnapshot}
+MODELS = {"gold": QuoteSnapshot, "spot": SpotSnapshot, "fx": FxSnapshot, "future": FuturesSnapshot}
 
 
 def lock_ingestion(session: Session) -> None:
@@ -61,6 +62,8 @@ def ingest(
             if product is None or product.provider_id != obs.provider_id:
                 raise ValueError("Sai provider/product/region")
             filters.append(model.product_id == obs.product_id)
+        if obs.kind == "future":
+            filters.append(model.contract == obs.contract)
         existing = session.scalar(
             select(model).where(*filters, model.provider_timestamp == obs.provider_timestamp)
         )
@@ -82,7 +85,7 @@ def ingest(
             previous_value = (
                 previous.ask
                 if obs.kind == "gold"
-                else (previous.price if obs.kind == "spot" else previous.rate)
+                else (previous.rate if obs.kind == "fx" else previous.price)
             )
         outlier = bool(previous_value and abs(current_value / previous_value - 1) * 100 > threshold)
         if obs.kind == "gold" and previous and previous.bid > 0:
@@ -99,9 +102,11 @@ def ingest(
             quality_reason="price_jump_requires_review" if outlier else None,
         )
         if obs.kind == "gold":
-            payload.update(product_id=obs.product_id, bid=obs.bid, ask=obs.ask)
+            payload.update(product_id=obs.product_id, bid=obs.bid, ask=obs.ask, time_basis=obs.time_basis)
         else:
-            payload["price" if obs.kind == "spot" else "rate"] = obs.value
+            payload["rate" if obs.kind == "fx" else "price"] = obs.value
+        if obs.kind == "future":
+            payload["contract"] = obs.contract
         session.add(model(**payload))
         session.flush()
         counts["inserted"] += 1

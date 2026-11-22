@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.gold_math import number, validate_quote
 
@@ -11,9 +11,11 @@ SAMPLE_LABEL = "SAMPLE DATA — NOT REAL MARKET DATA"
 
 class Observation(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-    kind: Literal["gold", "spot", "fx"]
+    kind: Literal["gold", "spot", "fx", "future"]
     provider_id: str
     product_id: str | None = None
+    contract: str | None = Field(default=None, pattern=r"^GC[FGHJKMNQUVXZ][0-9]{4}$")
+    time_basis: Literal["provider", "board_observation"] = "provider"
     provider_timestamp: datetime
     bid: Decimal | None = None
     ask: Decimal | None = None
@@ -31,7 +33,11 @@ class Observation(BaseModel):
 
     @model_validator(mode="after")
     def coherent(self):
-        expected = {"gold": "VND/luong", "spot": "USD/troy_oz", "fx": "VND/USD"}
+        expected = {"gold": "VND/luong", "spot": "USD/troy_oz", "fx": "VND/USD", "future": "USD/troy_oz"}
+        if (self.kind == "future") != (self.contract is not None):
+            raise ValueError("Giá kỳ hạn cần mã hợp đồng GC + tháng + năm bốn chữ số")
+        if (self.provider_id == "investing-gold") != (self.kind == "future"):
+            raise ValueError("Nguồn Investing Gold chỉ nhận hợp đồng kỳ hạn")
         if self.unit != expected[self.kind]:
             raise ValueError("Sai đơn vị")
         if self.kind == "gold":

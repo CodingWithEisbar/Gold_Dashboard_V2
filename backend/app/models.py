@@ -93,6 +93,7 @@ class QuoteSnapshot(SnapshotMixin, Base):
         Index("ix_quote_series_date", "product_id", "business_date", "quality_flag"),
     )
     product_id: Mapped[str] = mapped_column(ForeignKey("gold_products.id"))
+    time_basis: Mapped[str] = mapped_column(String(24), default="provider", server_default="provider")
     bid: Mapped[Decimal] = mapped_column(Numeric(24, 8))
     ask: Mapped[Decimal] = mapped_column(Numeric(24, 8))
     currency: Mapped[str] = mapped_column(String(8), default="VND")
@@ -108,6 +109,21 @@ class SpotSnapshot(SnapshotMixin, Base):
         CheckConstraint("reference_type IN ('manual','official','sample')"),
         Index("ix_spot_date", "business_date", "quality_flag"),
     )
+    price: Mapped[Decimal] = mapped_column(Numeric(24, 8))
+    currency: Mapped[str] = mapped_column(String(8), default="USD")
+    unit: Mapped[str] = mapped_column(String(24), default="USD/troy_oz")
+
+
+class FuturesSnapshot(SnapshotMixin, Base):
+    __tablename__ = "futures_snapshots"
+    __table_args__ = (
+        UniqueConstraint("provider_id", "contract", "provider_timestamp"),
+        CheckConstraint("price > 0 AND price <= 1000000000000"),
+        CheckConstraint("quality_flag IN ('valid','quarantined')"),
+        CheckConstraint("reference_type IN ('manual','official','sample')"),
+        Index("ix_futures_date", "business_date", "quality_flag"),
+    )
+    contract: Mapped[str] = mapped_column(String(7))
     price: Mapped[Decimal] = mapped_column(Numeric(24, 8))
     currency: Mapped[str] = mapped_column(String(8), default="USD")
     unit: Mapped[str] = mapped_column(String(24), default="USD/troy_oz")
@@ -159,6 +175,6 @@ def immutable_snapshot(mapper, connection, target):
     raise ValueError("Snapshots là append-only; dùng snapshot mới hoặc quy trình reconciliation")
 
 
-for snapshot_model in (QuoteSnapshot, SpotSnapshot, FxSnapshot):
+for snapshot_model in (QuoteSnapshot, SpotSnapshot, FxSnapshot, FuturesSnapshot):
     event.listen(snapshot_model, "before_update", immutable_snapshot)
     event.listen(snapshot_model, "before_delete", immutable_snapshot)

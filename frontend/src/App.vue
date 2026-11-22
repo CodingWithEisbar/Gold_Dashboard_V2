@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, money, pct, timestamp, today, type Product, type Quote, type HistoryRow, type Source, type Simulation } from './api'
+import DomesticPrices from './DomesticPrices.vue'
+import HourlyPrices from './HourlyPrices.vue'
 import LineChart from './LineChart.vue'
 
 const tabs = ['Tổng quan', 'Phân tích premium', 'Mô phỏng lịch sử', 'Phòng kịch bản', 'Dữ liệu & nguồn']
-const tab = ref(0), products = ref<Product[]>([]), productId = ref('sjc-bar-1l-hcm')
+const marketTitles = { domestic: 'Giá vàng trong nước', world: 'Giá vàng thế giới' } as const
+const tab = ref<number | keyof typeof marketTitles>(0), products = ref<Product[]>([]), productId = ref('sjc-bar-1l-hcm')
+const pageTitle = computed(() => typeof tab.value === 'number' ? tabs[tab.value] : marketTitles[tab.value])
+const showInvestingChart = ref(false)
 const quotes = ref<Record<string, Quote | null>>({}), rows = ref<HistoryRow[]>([]), sources = ref<Source[]>([])
 const loading = ref(false), error = ref(''), days = ref(30), result = ref<Simulation | null>(null), resultStatus = ref('')
+const refreshCount = ref(0)
 const assumptions = ref<string[]>([]), submitting = ref(false)
 const endDate = ref(today()), entryDate = ref(today()), exitDate = ref('')
 const quantity = ref('1'), unit = ref('luong'), manualEntry = ref('')
@@ -43,13 +49,17 @@ async function loadHistory() {
   } catch (e) { if (!(e instanceof DOMException && e.name === 'AbortError')) { error.value = (e as Error).message; rows.value = [] } }
   finally { if (!signal.aborted) loading.value = false }
 }
+let refreshedAt = 0
+let refreshTimer: number
 async function refresh() {
+  refreshedAt = Date.now()
   loading.value = true; error.value = ''
   try {
     const [catalog, health] = await Promise.all([api<Product[]>('/catalog/products'), api<Source[]>('/data-sources/status')])
     products.value = catalog.data; sources.value = health.data
     const prices = await Promise.all(products.value.map(async p => [p.id, (await api<Quote | null>(`/quotes/latest?product_id=${p.id}`)).data] as const))
     quotes.value = Object.fromEntries(prices)
+    refreshCount.value++
     await loadHistory()
   } catch (e) { error.value = (e as Error).message; loading.value = false }
 }
@@ -69,8 +79,20 @@ async function runScenario() {
   } catch (e) { error.value = (e as Error).message } finally { submitting.value = false }
 }
 watch([productId, days, endDate], () => { result.value = null; void loadHistory() })
-watch(tab, () => { result.value = null; scenarioResults.value = []; error.value = '' })
-onMounted(refresh)
+watch(tab, () => { result.value = null; scenarioResults.value = []; error.value = ''; showInvestingChart.value = false })
+function refreshVisibleDashboard() {
+  if (!document.hidden && !loading.value && Date.now() - refreshedAt >= 5 * 60_000) void refresh()
+}
+onMounted(() => {
+  void refresh()
+  refreshTimer = window.setInterval(refreshVisibleDashboard, 5 * 60_000)
+  document.addEventListener('visibilitychange', refreshVisibleDashboard)
+})
+onBeforeUnmount(() => {
+  window.clearInterval(refreshTimer)
+  document.removeEventListener('visibilitychange', refreshVisibleDashboard)
+  controller?.abort()
+})
 </script>
 
 <template>
@@ -78,16 +100,46 @@ onMounted(refresh)
     <aside class="sidebar">
       <a class="brand" href="#main" aria-label="Gold Premium, đến nội dung"><span class="brand-mark">◈</span><span>GOLD<span class="brand-sub">PREMIUM TRACKER</span></span></a>
       <div class="nav-caption">KHÔNG GIAN PHÂN TÍCH</div>
-      <nav aria-label="Điều hướng chính"><button v-for="(name, i) in tabs" :key="name" :class="{active: tab === i}" :aria-current="tab === i ? 'page' : undefined" @click="tab = i"><span class="nav-number">0{{ i + 1 }}</span>{{ name }}</button></nav>
+      <nav aria-label="Điều hướng chính">
+        <template v-for="(name, i) in tabs" :key="name">
+          <button :class="{active: tab === i}" :aria-current="tab === i ? 'page' : undefined" @click="tab = i"><span class="nav-number">0{{ i + 1 }}</span>{{ name }}</button>
+          <div v-if="i === 0" class="market-subnav" role="group" aria-label="Thị trường vàng">
+            <button v-for="(title, market) in marketTitles" :key="market" :class="{active: tab === market}"
+              :aria-current="tab === market ? 'page' : undefined" @click="tab = market">{{ title }}</button>
+          </div>
+        </template>
+      </nav>
       <div class="sidebar-note"><span class="gold">◷</span><b>Dữ liệu có nguồn gốc.</b><p>Đúng đơn vị. Đúng chiều giá.<br>Mọi giả định đều được ghi rõ.</p><small>Giờ Việt Nam · UTC+7</small></div>
     </aside>
     <div class="workspace">
-      <header class="topbar"><span>THỊ TRƯỜNG VÀNG / <b>{{ tabs[tab] }}</b></span><button class="quiet" :disabled="loading" @click="refresh">↻ Làm mới dữ liệu</button></header>
-      <main id="main">
-        <div class="page-heading"><div><p class="eyebrow">GOLD PREMIUM · INVESTMENT SIMULATOR</p><h1>{{ tabs[tab] }}</h1><p class="muted">Hiểu chênh lệch. Nhìn rõ chi phí. Mô phỏng trên dữ liệu đã kiểm chứng.</p></div><span class="tag">VND / lượng · 9999</span></div>
-        <div v-if="sample" class="notice sample" role="status">SAMPLE DATA — NOT REAL MARKET DATA · Dữ liệu tổng hợp dùng để kiểm thử.</div>
+      <header class="topbar"><span>THỊ TRƯỜNG VÀNG / <b>{{ pageTitle }}</b></span><button class="quiet refresh" :disabled="loading" @click="refresh">
+        <span class="refresh-icon" aria-hidden="true">↻</span>
+        {{ loading ? 'Đang tải dữ liệu…' : 'Làm mới dữ liệu' }}
+      </button></header>
+      <main id="main" :key="tab">
+        <div class="page-heading"><div><p class="eyebrow">GOLD PREMIUM · INVESTMENT SIMULATOR</p><h1>{{ pageTitle }}</h1><p v-if="tab === 'domestic'" class="muted">Giá mua vào, bán ra và chênh lệch theo từng đơn vị niêm yết.</p><p v-else-if="tab === 'world'" class="muted">Hợp đồng tương lai vàng · Investing.com</p><p v-else class="muted">Hiểu chênh lệch. Nhìn rõ chi phí. Mô phỏng trên dữ liệu đã kiểm chứng.</p></div><span class="tag">{{ tab === 'world' ? 'USD / troy oz' : 'VND / lượng · 9999' }}</span></div>
+        <div v-if="sample && tab !== 'world'" class="notice sample" role="status">SAMPLE DATA — NOT REAL MARKET DATA · Dữ liệu tổng hợp dùng để kiểm thử.</div>
         <div v-if="error" class="notice error" role="alert">{{ error }} <button class="quiet" @click="refresh">Thử tải lại</button></div>
-        <div v-if="loading" class="notice" role="status">Đang tải dữ liệu từ hệ thống…</div>
+        <div v-if="loading" class="sr-only" role="status">Đang tải dữ liệu từ hệ thống…</div>
+
+        <DomesticPrices v-if="tab === 'domestic'" :products="products" :quotes="quotes" :sources="sources" :refresh-count="refreshCount"/>
+        <template v-if="tab === 'world'">
+          <section class="card market-board">
+            <header><h2>Biểu đồ Gold Futures</h2>
+              <a href="https://www.investing.com/commodities/gold-streaming-chart" target="_blank" rel="noopener noreferrer">Mở trên Investing.com ↗</a>
+            </header>
+            <p class="muted">Nếu Investing.com hạn chế hiển thị trên localhost, hãy mở biểu đồ tại nguồn bằng liên kết phía trên.</p>
+            <button class="quiet" :aria-expanded="showInvestingChart" aria-controls="investing-widget"
+              @click="showInvestingChart = !showInvestingChart">{{ showInvestingChart ? 'Thu gọn biểu đồ' : 'Hiển thị biểu đồ Investing.com' }}</button>
+            <div id="investing-widget" v-if="showInvestingChart">
+              <iframe class="investing-chart" title="Biểu đồ giá Gold Futures theo giờ của Investing.com"
+                src="https://sslcharts.investing.com/index.php?force_lang=1&amp;pair_ID=8830&amp;timescale=3600&amp;candles=50&amp;style=candles"
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
+              <small class="poweredBy">Forex Charts powered by <a href="https://www.investing.com/" target="_blank" rel="nofollow noopener">Investing.com</a></small>
+            </div>
+          </section>
+          <HourlyPrices market="world" :refresh-count="refreshCount"/>
+        </template>
 
         <template v-if="tab === 0">
           <div class="section-label">BÁO GIÁ MỚI NHẤT <span>Cửa hàng mua vào = giá bạn bán lại</span></div>
@@ -97,15 +149,17 @@ onMounted(refresh)
             <div class="split"><div><span>Mua vào · bid</span><b>{{ money(quotes[p.id]?.bid) }}</b></div><div><span>Chênh lệch</span><b>{{ money(quotes[p.id]?.spread_vnd_per_luong) }}</b></div></div>
             <footer>{{ timestamp(quotes[p.id]?.observed_at) }} <span>{{ quotes[p.id]?.reference_type || 'Chưa có báo giá' }}</span></footer>
           </article></div>
-          <div v-if="!Object.values(quotes).some(Boolean) && !loading" class="empty"><span class="empty-symbol">◈</span><h2>Lịch sử bắt đầu từ dữ liệu thật</h2><p>Chưa có báo giá hợp lệ. Cấu hình nguồn được cấp phép hoặc nhập CSV qua CLI để bắt đầu theo dõi.</p><button class="button" @click="tab = 4">Xem nguồn & cách nhập dữ liệu →</button></div>
+          <div v-if="!Object.values(quotes).some(Boolean) && (!loading || Object.keys(quotes).length > 0)" class="empty"><span class="empty-symbol">◈</span><h2>Lịch sử bắt đầu từ dữ liệu thật</h2><p>Chưa có báo giá hợp lệ. Cấu hình nguồn được cấp phép hoặc nhập CSV qua CLI để bắt đầu theo dõi.</p><button class="button" @click="tab = 4">Xem nguồn & cách nhập dữ liệu →</button></div>
         </template>
+
+        <HourlyPrices v-if="tab === 0 && refreshCount > 0" :refresh-count="refreshCount"/>
 
         <template v-if="tab === 0 || tab === 1">
           <section class="card chart-card"><div class="section-header"><div><h2>{{ tab === 1 ? 'Premium theo thời gian' : 'Diễn biến giá vàng' }}</h2><p class="muted">Khoảng trống biểu thị ngày thiếu báo giá. Không tự lấy giá ngày trước.</p></div><div class="filters"><label>Sản phẩm<select v-model="productId"><option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }} · {{ p.location }}</option></select></label><label>Kết thúc<input v-model="endDate" type="date" :max="today()"></label><label>Khoảng thời gian<select v-model="days"><option v-for="d in [7, 30, 90, 365]" :key="d" :value="d">{{ d }} ngày</option></select></label></div></div>
             <div v-if="tab === 1" class="metric-strip"><div><span>Median sản phẩm trong kỳ</span><b>{{ pct(stats?.median_pct || undefined) }}</b></div><div><span>Percentile báo giá cuối kỳ</span><b>{{ pct(stats?.percentile_rank_pct || undefined) }}</b></div><div><span>Snapshot có premium</span><b>{{ stats?.count || 0 }}</b></div></div>
             <LineChart v-if="available.length" :labels="rows.map(r => r.business_date)" :series="series" :unit="tab === 1 ? '%' : 'VND/lượng'"/>
             <div v-else class="chart-empty">Chưa có dữ liệu trong khoảng ngày đã chọn.</div>
-            <p v-if="premiums.some(p => p.premium_status === 'indicative_daily')" class="notice">Premium indicative/daily: snapshot nội địa, thế giới và FX lệch quá 30 phút; không phải premium tức thời.</p>
+            <p v-if="premiums.some(p => p.premium_status === 'indicative_daily')" class="notice">Premium tham khảo theo ngày: các mốc giờ lệch nhau hoặc báo giá chỉ có giờ quan sát trên bảng.</p>
             <div class="table-wrap"><table><caption class="sr-only">Báo giá và premium theo ngày</caption><thead><tr><th>Ngày</th><th>Mua vào</th><th>Bán ra</th><th>Thế giới quy đổi</th><th>Premium</th><th>Chất lượng / nguồn</th></tr></thead><tbody><tr v-for="row in rows.slice().reverse()" :key="row.business_date"><td>{{ row.business_date }}</td><td>{{ money(row.bid) }}</td><td>{{ money(row.ask) }}</td><td>{{ money(row.premium?.world_reference_vnd_per_luong) }}</td><td>{{ pct(row.premium?.premium_pct) }}</td><td>{{ row.data_status }} · {{ row.reference_type || 'missing' }}<small>{{ row.premium_status }} {{ row.source }}</small></td></tr></tbody></table></div>
             <a class="text-link" :href="`/api/v1/prices/export.csv?${query}`">↓ Xuất CSV của kỳ đã chọn</a>
           </section>
@@ -129,7 +183,7 @@ onMounted(refresh)
         <section v-if="tab === 2 && result?.path?.length" class="card"><h2>Backtest lãi / lỗ lý thuyết qua ngày</h2><p class="muted">{{ result.path_assumption }}</p><LineChart :labels="result.path.map(p => p.business_date)" :series="[{label: 'P&L lý thuyết', data: result.path.map(p => p.net_pnl_vnd == null ? null : Number(p.net_pnl_vnd)), color: '#e9bd71'}]" unit="VND"/><div class="table-wrap"><table><thead><tr><th>Ngày</th><th>P&L</th></tr></thead><tbody><tr v-for="p in result.path" :key="p.business_date"><td>{{ p.business_date }}</td><td>{{ money(p.net_pnl_vnd) }}</td></tr></tbody></table></div></section>
 
         <template v-if="tab === 4">
-          <div class="notice">Không có quyền thu thập đã xác nhận → nguồn tự động bị khóa. Chỉ nhập dữ liệu bạn có quyền sử dụng.</div>
+          <div class="notice">Worker local kiểm tra các nguồn đã bật mỗi giờ. SJC và DOJI đọc bảng niêm yết bằng trình duyệt. Giá kỳ hạn Investing.com được lưu theo từng hợp đồng sau khi xác nhận quyền sử dụng.</div>
           <section class="card"><h2>Tình trạng nguồn dữ liệu</h2><div class="table-wrap"><table><thead><tr><th>Nguồn</th><th>Giấy phép</th><th>Lần quan sát cuối</th><th>Trạng thái</th><th>Loại dữ liệu</th></tr></thead><tbody><tr v-for="source in sources" :key="source.id"><td><a :href="source.source_url" target="_blank" rel="noopener noreferrer">{{ source.name }} ↗</a><small>{{ source.license_note }}</small></td><td>{{ source.license_status }}</td><td>{{ timestamp(source.latest_observed_at) }}</td><td>{{ source.status }}<small>{{ source.last_error_code }}</small></td><td>{{ source.reference_types.join(', ') || 'Chưa nhập' }}</td></tr></tbody></table></div></section>
           <div class="two-columns"><section class="card"><h2>Nhập CSV qua CLI</h2><p class="muted">File UTF-8, đúng schema, timestamp có timezone, đơn vị cố định. Thực hiện trên môi trường quản trị nội bộ.</p><pre>python -m app.jobs.import_csv /imports/prices.csv
   --import-root /imports

@@ -4,7 +4,9 @@ Khảo sát ban đầu **06/11/2026, Asia/Ho_Chi_Minh**; bổ sung Bảo Tín M�
 
 | Nguồn | Live API | Historical API | CSV | Trạng thái |
 |---|---|---|---|---|
-| SJC | Chưa xác minh API được cấp phép | Chưa xác minh | Có, nếu được quyền | BLOCKED tự động |
+| SJC | Bảng công khai qua Firefox, hai nhóm sản phẩm theo VND/lượng | Chưa xác minh | Có | Adapter local theo giờ, chờ xác nhận quyền |
+| DOJI | Bảng hiển thị bằng JavaScript, mua/bán nghìn VND/chỉ | Chưa xác minh | Có | Adapter local theo giờ, ghi giờ đọc bảng; chờ xác nhận quyền |
+| Investing.com Gold Futures | Bảng theo hợp đồng GC, USD/troy oz | Chưa tích hợp backfill | Có, kèm mã hợp đồng | Adapter local theo giờ, chờ quyền bằng văn bản |
 | PNJ | Trang JS công khai; chưa xác minh API được cấp phép | Chưa xác minh | Có, nếu được quyền | BLOCKED tự động |
 | Vietcombank | Trang niêm yết; chưa xác minh quyền tự động | Chưa xác minh | Có, phải ghi đúng convention | BLOCKED tự động |
 | Metals.Dev spot | Adapter endpoint được tài liệu hóa, tắt mặc định | Timeseries có tài liệu, chưa tích hợp backfill | Có | Cần subscription, key và xác nhận quyền |
@@ -12,7 +14,7 @@ Khảo sát ban đầu **06/11/2026, Asia/Ho_Chi_Minh**; bổ sung Bảo Tín M�
 | GiaVangVietNam.com | Có hướng dẫn widget; chưa xác minh API JSON được cấp phép | Có trang biểu đồ, chưa có historical API được xác minh | Chỉ khi có quyền | Chưa bật ingestion; [khảo sát chi tiết](SOURCE_RESEARCH_GIAVANGVIETNAM.md) |
 | Bảo Tín Mạnh Hải | Adapter HTTP HTML Kim Gia Bảo 24K đã triển khai, tắt mặc định; chưa có xác nhận quyền của operator | Có biểu đồ/nhãn Export Excel, chưa xác minh tải và quyền backfill | Có, catalog BTMH riêng; yêu cầu quyền và chuẩn hóa đúng | Cần xác nhận quyền/đơn vị/timezone; [job VPS](BTMH_VPS_JOB.md), [khảo sát](SOURCE_RESEARCH_BAOTINMANHHAI.md) |
 
-SJC [giá niêm yết](https://www.sjc.com.vn/gia-vang-online), PNJ [trang giá](https://giavang.pnj.com.vn/) truy cập được; PNJ chỉ trả shell JS qua công cụ đọc. Thử đọc robots tại ba host qua web tool không thành công. Không suy ra “được phép” hoặc “bị cấm” từ lỗi này. Không thử endpoint ẩn, CAPTCHA hoặc bot bypass. Chưa có bằng chứng hợp đồng của người dùng; adapter tự động cho các nguồn này không được bật.
+SJC [giá niêm yết](https://www.sjc.com.vn/gia-vang-online), PNJ [trang giá](https://giavang.pnj.com.vn/) truy cập được; PNJ chỉ trả shell JS qua công cụ đọc. Thử đọc robots tại ba host qua web tool không thành công. Không suy ra “được phép” hoặc “bị cấm” từ lỗi này. Không thử endpoint ẩn, CAPTCHA hoặc bot bypass. Các nguồn tự động cần xác nhận quyền trong catalog. Cấu hình local và quy tắc thời gian được mô tả ở [README](../README.md#giá-vàng-theo-giờ-trên-local).
 
 Vietcombank [trang tỷ giá](https://www.vietcombank.com.vn/vi-VN/KHCN/Cong-cu-tien-ich/Ty-gia) phân biệt mua tiền mặt, chuyển khoản, bán. MVP chỉ nhận **reference_mid** qua CSV; không đổi tên tỷ giá bán VCB thành mid. Nếu cần bank_sell phải bổ sung convention/series, migration và kiểm thử trước khi dùng.
 

@@ -2,7 +2,7 @@
 
 Ứng dụng Vue 3 + TypeScript / FastAPI / PostgreSQL, tính toán tài chính bằng Decimal ở backend. Giao diện tiếng Việt gồm Tổng quan, Premium, Mô phỏng lịch sử, Phòng kịch bản và Dữ liệu & nguồn.
 
-**Trạng thái:** source code đã được triển khai và có kiểm thử thực tế; chưa triển khai VPS. Database production khởi tạo không có báo giá. SJC/PNJ và FX tự động còn bị khóa vì chưa xác minh quyền sử dụng; Metals.Dev cần hợp đồng/subscription và API key. Xem [báo cáo kiểm chứng](docs/IMPLEMENTATION_STATUS.md) để phân biệt phần đã chạy và phần còn chờ.
+**Trạng thái:** source code đã được triển khai và có kiểm thử thực tế; chưa triển khai VPS. Database production khởi tạo không có báo giá. Các nguồn tự động cần xác nhận quyền sử dụng; Metals.Dev cần hợp đồng/subscription và API key. Xem [báo cáo kiểm chứng](docs/IMPLEMENTATION_STATUS.md) để phân biệt phần đã chạy và phần còn chờ.
 
 Đã bổ sung **job crawl BTMH trên worker**, tắt mặc định: xem [hướng dẫn VPS/Dokploy](docs/BTMH_VPS_JOB.md) và [kết quả 130 tests Linux/PostgreSQL cùng final image scans](docs/BTMH_JOB_RESULTS.md). Lệnh riêng `python -m app.jobs.collect_daily --source btmh`; chỉ bật sau khi xác nhận quyền và convention đơn vị/timezone. Không có giá BTMH thật được seed vào database.
 
@@ -39,6 +39,38 @@ docker compose exec worker python -m app.jobs.collect_daily
 ```
 
 `collect_daily` hiện trả exit 2/3 và `source_unavailable` cho nguồn chưa sẵn sàng; không giả vờ đồng bộ đủ thị trường. Không nhập fixture `sample` vào production. Mọi báo giá dùng VND/lượng, kể cả sản phẩm đóng gói 1 chỉ; sản phẩm vẫn có series riêng.
+
+### Giá vàng theo giờ trên local
+
+`./start.sh --build` cập nhật worker và dashboard. Worker local kiểm tra các nguồn đã bật lúc khởi động và đầu mỗi giờ khi VM chạy. Dashboard đang mở đọc lại dữ liệu từ API mỗi 5 phút. Mục **Tổng quan → Báo giá theo giờ** cho chọn ngày và chuỗi giá. Mỗi điểm là quan sát hợp lệ cuối cùng trong giờ, theo giờ Việt Nam. DOJI dùng thời điểm worker đọc bảng và ghi rõ nhãn **Giờ đọc bảng** vì đồng hồ trang phụ thuộc trình duyệt. Bảng giá giữ riêng thời điểm công bố và thời điểm lấy về trong API `GET /api/v1/prices/hourly?day=YYYY-MM-DD`. Nguồn có timestamp công bố được khử trùng theo timestamp đó. Với DOJI, hai lần đọc hợp lệ ở hai giờ khác nhau có thể cùng mức giá. Giờ thiếu dữ liệu được để trống.
+
+| Nguồn | Dữ liệu được nhận | Cách nạp |
+|---|---|---|
+| Bảo Tín Mạnh Hải | Kim Gia Bảo 24K, giá mua/bán nghìn VND/chỉ × 10.000 thành VND/lượng | Worker đọc bảng HTML khi đã cấu hình [job BTMH](docs/BTMH_VPS_JOB.md). Local đã có lịch theo giờ. |
+| DOJI | Vàng miếng SJC và nhẫn Hưng Thịnh Vượng 9999 theo bảng niêm yết DOJI. Cột mua/bán ghi nghìn VND/chỉ. | Firefox trong container tùy chọn đọc bảng công khai đã hiển thị. Worker kiểm tra tên sản phẩm, tiêu đề, đơn vị, thời gian trên trang rồi mới ghi. |
+| SJC | Hai dòng niêm yết riêng cho vàng miếng 1L/10L/1kg và nhẫn 99,99% loại 1/2/5 chỉ. Giá VND/lượng. | Firefox đọc bảng công khai, dùng mốc cập nhật trên trang. Mã khu vực SJC_LISTED phân biệt bảng chung với CSV có khu vực HCM. |
+| Investing.com Gold Futures | Giá USD/troy oz theo từng hợp đồng giao tháng | Worker có bộ đọc cho bảng tiếng Anh, đối chiếu mã GC, tháng giao, ngày thanh toán, USD và timestamp của giá. Cần quyền bằng văn bản, `INVESTING_ENABLED=true`, `COMPOSE_PROFILES=price-browser` và xác nhận catalog `--license-investing`. Khi nhập CSV, bổ sung cột cuối `contract`, dùng `kind=future`, `provider_id=investing-gold`, `reference_type=manual`, đặt giá ở cột `value` và để trống `product_id,bid,ask`. Ví dụ mã chuẩn `GCZ2026` cho hợp đồng tháng 12/2026. |
+
+#### Bật thu thập cho nguồn đã có quyền sử dụng
+
+1. Trong `.env`, bật các biến tương ứng với nguồn đã được phép thu thập, lưu trữ và hiển thị. SJC, DOJI và Investing dùng chung Firefox, nên thêm `COMPOSE_PROFILES=price-browser` khi bật một trong ba nguồn này.
+
+   | Nguồn | Biến trong `.env` | Tùy chọn xác nhận cho CLI |
+   |---|---|---|
+   | BTMH | `BTMH_ENABLED=true`, `BTMH_LICENSE_CONFIRMED=true`, `BTMH_CONVENTIONS_CONFIRMED=true` | `--license-btmh` |
+   | DOJI | `DOJI_ENABLED=true` | `--license-doji` |
+   | SJC | `SJC_ENABLED=true` | `--license-sjc` |
+   | Investing Gold Futures | `INVESTING_ENABLED=true` | `--license-investing` |
+
+2. Khi stack đang chạy, dùng tùy chọn xác nhận tương ứng và ghi mô tả quyền thực tế cho từng nguồn. Ví dụ với DOJI:
+
+   ```bash
+   docker compose exec worker python -m app.jobs.catalog --license-doji --license-note "Mô tả quyền sử dụng DOJI đã xác nhận"
+   ```
+
+3. Chạy `./start.sh` để áp dụng cấu hình. Worker thử nguồn vừa bật ở lần khởi động, rồi vào đầu mỗi giờ. Xem kết quả bằng `docker compose logs --tail 20 worker` hoặc mục **Dữ liệu & nguồn**. Để dừng một nguồn, đổi biến `*_ENABLED` của nguồn đó thành `false` và chạy lại `./start.sh`.
+
+Chuỗi vàng thế giới giao ngay dùng nguồn spot đã cấu hình và tỷ giá USD/VND để tính premium. Hợp đồng vàng kỳ hạn có biểu đồ riêng theo tháng giao. Trang [Investing.com](https://www.investing.com/commodities/gold) yêu cầu quyền bằng văn bản để lưu và hiển thị lại dữ liệu.
 
 ## Chạy kiểm thử ngoài Docker
 

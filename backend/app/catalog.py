@@ -6,6 +6,8 @@ from app.models import DataSource, GoldProduct
 
 SOURCES = [
     ("sjc", "SJC", "https://www.sjc.com.vn/gia-vang-online"),
+    ("doji", "DOJI", "https://banggia.doji.vn/gold-price"),
+    ("investing-gold", "Investing.com · Gold Futures", "https://www.investing.com/commodities/gold"),
     ("pnj", "PNJ", "https://giavang.pnj.com.vn/"),
     ("btmh", "Bảo Tín Mạnh Hải", "https://baotinmanhhai.vn/bang-gia-vang"),
     ("metals-dev", "Metals.Dev", "https://www.metals.dev/docs"),
@@ -17,6 +19,10 @@ SOURCES = [
     ),
 ]
 PRODUCTS = [
+    ("sjc-bar-listed", "sjc", "SJC_1L_10L_1KG", "SJC vàng miếng 1L, 10L, 1kg", "SJC_LISTED"),
+    ("sjc-ring-listed", "sjc", "RING_9999_1C_2C_5C", "SJC nhẫn 99,99% loại 1, 2, 5 chỉ", "SJC_LISTED"),
+    ("doji-sjc-listed", "doji", "SJC_BAR", "DOJI vàng miếng SJC", "DOJI_LISTED"),
+    ("doji-ring-9999-listed", "doji", "RING_9999", "DOJI nhẫn Hưng Thịnh Vượng 9999", "DOJI_LISTED"),
     ("sjc-bar-1l-hcm", "sjc", "BAR_1_LUONG", "SJC vàng miếng 1 lượng", "HCM"),
     ("sjc-bar-1c-hcm", "sjc", "BAR_1_CHI", "SJC vàng miếng 1 chỉ", "HCM"),
     ("sjc-ring-9999-hcm", "sjc", "RING_9999", "SJC nhẫn 9999", "HCM"),

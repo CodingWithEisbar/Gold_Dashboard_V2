@@ -15,8 +15,16 @@ from app.api.schemas import HistoricalRequest, IsoDate, ProductId, ScenarioReque
 from app.config import get_settings
 from app.db import get_db
 from app.domain.gold_math import VERSION, historical_pnl, scenario
-from app.models import DataSource, FxSnapshot, GoldProduct, IngestionRun, QuoteSnapshot, SpotSnapshot
-from app.repositories.prices import history, observed_on, quote_payload, vn_today
+from app.models import (
+    DataSource,
+    FuturesSnapshot,
+    FxSnapshot,
+    GoldProduct,
+    IngestionRun,
+    QuoteSnapshot,
+    SpotSnapshot,
+)
+from app.repositories.prices import history, hourly_history, observed_on, quote_payload, vn_today
 
 router = APIRouter(prefix="/api/v1")
 Db = Annotated[Session, Depends(get_db)]
@@ -60,7 +68,7 @@ def ready(db: Db):
         db.execute(text("SELECT 1"))
         db.execute(select(GoldProduct.id).limit(1))
         if get_settings().app_env == "production":
-            for model in (QuoteSnapshot, SpotSnapshot, FxSnapshot):
+            for model in (QuoteSnapshot, SpotSnapshot, FxSnapshot, FuturesSnapshot):
                 if db.scalar(select(model.id).where(model.reference_type == "sample").limit(1)) is not None:
                     raise HTTPException(503, "Production chứa dữ liệu sample; cần database sạch")
     except SQLAlchemyError:
@@ -100,6 +108,14 @@ def latest(db: Db, product_id: ProductId):
         quote_payload(quote) if quote else None,
         data_status="missing" if quote is None else quote_payload(quote)["data_status"],
     )
+
+
+@router.get("/prices/hourly")
+def hourly_prices(db: Db, day: IsoDate):
+    if day > vn_today():
+        raise HTTPException(422, "Ngày nằm trong tương lai")
+    return JSONResponse(serializable({"data": hourly_history(db, day, get_settings()),
+                                      "day": day, "timezone": "Asia/Ho_Chi_Minh"}))
 
 
 @router.get("/prices/history")
@@ -190,7 +206,7 @@ def sources(db: Db):
         )
         latest_observed = None
         kinds = set()
-        for model in (QuoteSnapshot, SpotSnapshot, FxSnapshot):
+        for model in (QuoteSnapshot, SpotSnapshot, FxSnapshot, FuturesSnapshot):
             maximum = db.scalar(
                 select(func.max(model.provider_timestamp)).where(model.provider_id == source.id)
             )

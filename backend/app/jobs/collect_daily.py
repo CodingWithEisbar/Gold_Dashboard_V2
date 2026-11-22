@@ -14,16 +14,25 @@ from app.db import engine
 from app.ingestion.service import VN, ingest, reconcile_day, record_run
 from app.models import DataSource, IngestionRun
 from app.providers.btmh import PARSER_VERSION, BtmhGoldProvider
+from app.providers.doji import DojiGoldProvider
+from app.providers.investing import InvestingGoldProvider
 from app.providers.metals_dev import MetalsDevSpotProvider
 from app.providers.safe_http import SourceUnavailable
+from app.providers.sjc import SjcGoldProvider
 
-PROVIDERS = {"btmh": BtmhGoldProvider, "metals-dev": MetalsDevSpotProvider}
+PROVIDERS = {
+    "btmh": BtmhGoldProvider,
+    "doji": DojiGoldProvider,
+    "sjc": SjcGoldProvider,
+    "investing-gold": InvestingGoldProvider,
+    "metals-dev": MetalsDevSpotProvider,
+}
 # Stable transaction locks serialize each source's HTTP request + write + run accounting.
-SOURCE_LOCKS = {"btmh": 74198015, "metals-dev": 74198016}
+SOURCE_LOCKS = {"investing-gold": 74198019, "sjc": 74198018, "btmh": 74198015, "doji": 74198017, "metals-dev": 74198016}
 
 
 def collect_source(
-    session: Session, source_id: str, settings: Settings, *, now: datetime | None = None
+    session: Session, source_id: str, settings: Settings, *, now: datetime | None = None, hourly: bool = False
 ) -> dict:
     started_at = now or datetime.now(UTC)
     result = {"provider_id": source_id, "started_at": started_at.isoformat()}
@@ -37,14 +46,17 @@ def collect_source(
             if not locked:
                 session.rollback()
                 return {**result, "status": "skipped", "reason": "source_job_already_running"}
-        if source_id == "btmh":
+        if hourly or source_id == "btmh":
             previous = session.scalar(
                 select(IngestionRun)
                 .where(IngestionRun.provider_id == source_id)
                 .order_by(IngestionRun.started_at.desc())
                 .limit(1)
             )
-            if previous and started_at - previous.started_at < timedelta(
+            if hourly and previous and previous.started_at >= started_at.replace(minute=0, second=0, microsecond=0):
+                session.rollback()
+                return {**result, "status": "skipped", "reason": "hour_already_polled"}
+            if source_id == "btmh" and previous and started_at - previous.started_at < timedelta(
                 minutes=settings.btmh_min_interval_minutes
             ):
                 session.rollback()
@@ -64,7 +76,7 @@ def collect_source(
         observations = PROVIDERS[source_id](settings).fetch()
         if not observations or any(obs.provider_id != source_id for obs in observations):
             raise SourceUnavailable("provider_schema_changed")
-        counts = ingest(session, observations, settings, now=started_at)
+        counts = ingest(session, observations, settings, now=now or datetime.now(UTC))
         days = {obs.provider_timestamp.astimezone(VN).date() for obs in observations}
         days.add(started_at.astimezone(VN).date())
         for day in sorted(days):
@@ -113,7 +125,7 @@ def run_collection(session: Session, settings: Settings, source_id: str = "all")
     session.commit()
     results = []
     if source_id == "all":
-        for missing in ("sjc", "pnj", "manual-fx"):
+        for missing in ("pnj", "manual-fx"):
             record_run(session, missing, "source_unavailable", error_code="use_licensed_csv")
             results.append({"provider_id": missing, "status": "source_unavailable", "action": "import_csv"})
         session.commit()

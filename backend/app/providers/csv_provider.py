@@ -28,7 +28,7 @@ def parse_csv(raw: bytes) -> list[Observation]:
     if len(raw) > MAX_BYTES:
         raise ValueError("CSV vượt 2 MiB")
     reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig"), newline=""), strict=True)
-    if reader.fieldnames != HEADERS:
+    if reader.fieldnames not in (HEADERS, [*HEADERS, "contract"]):
         raise ValueError("CSV sai schema hoặc thứ tự header")
     observations = []
     for row in reader:
@@ -39,7 +39,8 @@ def parse_csv(raw: bytes) -> list[Observation]:
         for field in ("bid", "ask", "value"):
             if row[field] and not DECIMAL.fullmatch(row[field]):
                 raise ValueError(f"{field}: dùng chuỗi số thập phân không dấu phân cách")
-        payload_hash = hashlib.sha256("\x1f".join(row[k] for k in HEADERS).encode("utf-8")).hexdigest()
+        identity_fields = reader.fieldnames if row.get("contract") else HEADERS
+        payload_hash = hashlib.sha256("\x1f".join(row[k] for k in identity_fields).encode("utf-8")).hexdigest()
         observations.append(
             Observation(**{k: v or None for k, v in row.items()}, raw_payload_hash=payload_hash)
         )

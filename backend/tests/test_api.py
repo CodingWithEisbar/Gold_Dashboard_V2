@@ -33,7 +33,7 @@ def test_health_and_empty_data(client):
     assert client.get("/api/v1/health/live").status_code == 200
     assert client.get("/api/v1/health/ready").status_code == 200
     products = client.get("/api/v1/catalog/products").json()["data"]
-    assert len(products) == 5
+    assert len(products) == 9
     assert any(product["id"] == "btmh-kgb-24k-listed" for product in products)
     response = client.get("/api/v1/quotes/latest?product_id=sjc-bar-1l-hcm").json()
     assert response["data"] is None and response["data_status"] == "missing"
@@ -200,3 +200,13 @@ def test_strict_iso_date(client, value):
 @pytest.mark.parametrize("value", ["=HYPERLINK('x')", "+cmd", "-cmd", "@SUM(1)", "  =1+1", "\tcmd", "\rfoo"])
 def test_csv_formula_injection(value):
     assert safe_csv_cell(value).startswith("'")
+
+
+def test_hourly_endpoint_local_day_and_missing(client, loaded):
+    result = client.get("/api/v1/prices/hourly?day=2026-11-05")
+    assert result.status_code == 200
+    body = result.json()
+    assert body["timezone"] == "Asia/Ho_Chi_Minh"
+    assert any(p["kind"] == "gold" and p["hour"] == 18 and p["reference_type"] == "sample" for p in body["data"])
+    assert client.get("/api/v1/prices/hourly?day=2026-11-01").json()["data"] == []
+    assert client.get("/api/v1/prices/hourly?day=2999-01-01").status_code == 422
