@@ -10,15 +10,14 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db import engine
 from app.jobs.collect_daily import collect_source
+from app.providers.vang_today import SPOT_SOURCE_ID
 
 
 def main():
     settings = get_settings()
     enabled = {
-        "sjc": settings.sjc_enabled,
-        "btmh": settings.btmh_enabled,
-        "doji": settings.doji_enabled,
-        "investing-gold": settings.investing_enabled,
+        "vang-today": settings.vang_today_enabled,
+        SPOT_SOURCE_ID: settings.vang_today_enabled,
         "metals-dev": settings.metals_license_confirmed,
     }
     print(json.dumps({"event": "hourly_worker_started", "sources": [k for k, v in enabled.items() if v]}))

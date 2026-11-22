@@ -3,13 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, money, pct, timestamp, today, type Product, type Quote, type HistoryRow, type Source, type Simulation } from './api'
 import DomesticPrices from './DomesticPrices.vue'
 import HourlyPrices from './HourlyPrices.vue'
+import WorldPrices from './WorldPrices.vue'
 import LineChart from './LineChart.vue'
 
 const tabs = ['Tổng quan', 'Phân tích premium', 'Mô phỏng lịch sử', 'Phòng kịch bản', 'Dữ liệu & nguồn']
 const marketTitles = { domestic: 'Giá vàng trong nước', world: 'Giá vàng thế giới' } as const
-const tab = ref<number | keyof typeof marketTitles>(0), products = ref<Product[]>([]), productId = ref('sjc-bar-1l-hcm')
+const tab = ref<number | keyof typeof marketTitles>(0), products = ref<Product[]>([]), productId = ref('vang-today-sjl1l10')
 const pageTitle = computed(() => typeof tab.value === 'number' ? tabs[tab.value] : marketTitles[tab.value])
-const showInvestingChart = ref(false)
 const quotes = ref<Record<string, Quote | null>>({}), rows = ref<HistoryRow[]>([]), sources = ref<Source[]>([])
 const loading = ref(false), error = ref(''), days = ref(30), result = ref<Simulation | null>(null), resultStatus = ref('')
 const refreshCount = ref(0)
@@ -56,7 +56,10 @@ async function refresh() {
   loading.value = true; error.value = ''
   try {
     const [catalog, health] = await Promise.all([api<Product[]>('/catalog/products'), api<Source[]>('/data-sources/status')])
-    products.value = catalog.data; sources.value = health.data
+    const legacySources = new Set(catalog.data.filter(p => p.provider_id !== 'vang-today').map(p => p.provider_id))
+    sources.value = health.data.filter(s => !legacySources.has(s.id) || s.latest_observed_at)
+    const availableSources = new Set(sources.value.map(s => s.id))
+    products.value = catalog.data.filter(p => availableSources.has(p.provider_id))
     const prices = await Promise.all(products.value.map(async p => [p.id, (await api<Quote | null>(`/quotes/latest?product_id=${p.id}`)).data] as const))
     quotes.value = Object.fromEntries(prices)
     refreshCount.value++
@@ -79,7 +82,7 @@ async function runScenario() {
   } catch (e) { error.value = (e as Error).message } finally { submitting.value = false }
 }
 watch([productId, days, endDate], () => { result.value = null; void loadHistory() })
-watch(tab, () => { result.value = null; scenarioResults.value = []; error.value = ''; showInvestingChart.value = false })
+watch(tab, () => { result.value = null; scenarioResults.value = []; error.value = '' })
 function refreshVisibleDashboard() {
   if (!document.hidden && !loading.value && Date.now() - refreshedAt >= 5 * 60_000) void refresh()
 }
@@ -117,34 +120,18 @@ onBeforeUnmount(() => {
         {{ loading ? 'Đang tải dữ liệu…' : 'Làm mới dữ liệu' }}
       </button></header>
       <main id="main" :key="tab">
-        <div class="page-heading"><div><p class="eyebrow">GOLD PREMIUM · INVESTMENT SIMULATOR</p><h1>{{ pageTitle }}</h1><p v-if="tab === 'domestic'" class="muted">Giá mua vào, bán ra và chênh lệch theo từng đơn vị niêm yết.</p><p v-else-if="tab === 'world'" class="muted">Hợp đồng tương lai vàng · Investing.com</p><p v-else class="muted">Hiểu chênh lệch. Nhìn rõ chi phí. Mô phỏng trên dữ liệu đã kiểm chứng.</p></div><span class="tag">{{ tab === 'world' ? 'USD / troy oz' : 'VND / lượng · 9999' }}</span></div>
+        <div class="page-heading"><div><p class="eyebrow">GOLD PREMIUM · INVESTMENT SIMULATOR</p><h1>{{ pageTitle }}</h1><p v-if="tab === 'domestic'" class="muted">Giá mua vào, bán ra và chênh lệch theo thương hiệu, qua API Vàng.Today.</p><p v-else-if="tab === 'world'" class="muted">Giá vàng giao ngay · Vàng.Today</p><p v-else class="muted">Hiểu chênh lệch. Nhìn rõ chi phí. Mô phỏng trên dữ liệu đã kiểm chứng.</p></div><span class="tag">{{ tab === 'world' ? 'USD / troy oz' : 'VND / lượng' }}</span></div>
         <div v-if="sample && tab !== 'world'" class="notice sample" role="status">SAMPLE DATA — NOT REAL MARKET DATA · Dữ liệu tổng hợp dùng để kiểm thử.</div>
         <div v-if="error" class="notice error" role="alert">{{ error }} <button class="quiet" @click="refresh">Thử tải lại</button></div>
         <div v-if="loading" class="sr-only" role="status">Đang tải dữ liệu từ hệ thống…</div>
 
         <DomesticPrices v-if="tab === 'domestic'" :products="products" :quotes="quotes" :sources="sources" :refresh-count="refreshCount"/>
-        <template v-if="tab === 'world'">
-          <section class="card market-board">
-            <header><h2>Biểu đồ Gold Futures</h2>
-              <a href="https://www.investing.com/commodities/gold-streaming-chart" target="_blank" rel="noopener noreferrer">Mở trên Investing.com ↗</a>
-            </header>
-            <p class="muted">Nếu Investing.com hạn chế hiển thị trên localhost, hãy mở biểu đồ tại nguồn bằng liên kết phía trên.</p>
-            <button class="quiet" :aria-expanded="showInvestingChart" aria-controls="investing-widget"
-              @click="showInvestingChart = !showInvestingChart">{{ showInvestingChart ? 'Thu gọn biểu đồ' : 'Hiển thị biểu đồ Investing.com' }}</button>
-            <div id="investing-widget" v-if="showInvestingChart">
-              <iframe class="investing-chart" title="Biểu đồ giá Gold Futures theo giờ của Investing.com"
-                src="https://sslcharts.investing.com/index.php?force_lang=1&amp;pair_ID=8830&amp;timescale=3600&amp;candles=50&amp;style=candles"
-                referrerpolicy="strict-origin-when-cross-origin"></iframe>
-              <small class="poweredBy">Forex Charts powered by <a href="https://www.investing.com/" target="_blank" rel="nofollow noopener">Investing.com</a></small>
-            </div>
-          </section>
-          <HourlyPrices market="world" :refresh-count="refreshCount"/>
-        </template>
+        <WorldPrices v-if="tab === 'world'" :refresh-count="refreshCount"/>
 
         <template v-if="tab === 0">
           <div class="section-label">BÁO GIÁ MỚI NHẤT <span>Cửa hàng mua vào = giá bạn bán lại</span></div>
-          <div class="quote-grid"><article v-for="p in products.filter(p => p.product_code !== 'BAR_1_CHI')" :key="p.id" class="card quote-card">
-            <div class="card-top"><span class="provider">{{ p.provider_id.toUpperCase() }} <small>{{ p.location }}</small></span><span class="status">{{ quotes[p.id]?.data_status || 'missing' }}</span></div>
+          <div class="quote-grid"><article v-for="p in products.filter(p => p.provider_id === 'vang-today')" :key="p.id" class="card quote-card">
+            <div class="card-top"><span class="provider">{{ p.brand || p.provider_id }} <small>{{ p.location }}</small></span><span class="status">{{ quotes[p.id]?.data_status || 'missing' }}</span></div>
             <h2>{{ p.name }}</h2><div class="price-label">CỬA HÀNG BÁN RA · ASK</div><div class="large-price">{{ money(quotes[p.id]?.ask) }}</div>
             <div class="split"><div><span>Mua vào · bid</span><b>{{ money(quotes[p.id]?.bid) }}</b></div><div><span>Chênh lệch</span><b>{{ money(quotes[p.id]?.spread_vnd_per_luong) }}</b></div></div>
             <footer>{{ timestamp(quotes[p.id]?.observed_at) }} <span>{{ quotes[p.id]?.reference_type || 'Chưa có báo giá' }}</span></footer>
@@ -183,7 +170,7 @@ onBeforeUnmount(() => {
         <section v-if="tab === 2 && result?.path?.length" class="card"><h2>Backtest lãi / lỗ lý thuyết qua ngày</h2><p class="muted">{{ result.path_assumption }}</p><LineChart :labels="result.path.map(p => p.business_date)" :series="[{label: 'P&L lý thuyết', data: result.path.map(p => p.net_pnl_vnd == null ? null : Number(p.net_pnl_vnd)), color: '#e9bd71'}]" unit="VND"/><div class="table-wrap"><table><thead><tr><th>Ngày</th><th>P&L</th></tr></thead><tbody><tr v-for="p in result.path" :key="p.business_date"><td>{{ p.business_date }}</td><td>{{ money(p.net_pnl_vnd) }}</td></tr></tbody></table></div></section>
 
         <template v-if="tab === 4">
-          <div class="notice">Worker local kiểm tra các nguồn đã bật mỗi giờ. SJC và DOJI đọc bảng niêm yết bằng trình duyệt. Giá kỳ hạn Investing.com được lưu theo từng hợp đồng sau khi xác nhận quyền sử dụng.</div>
+          <div class="notice">Worker local kiểm tra các nguồn đã bật mỗi giờ. Vàng.Today cung cấp giá trong nước bằng VND/lượng và giá XAU/USD bằng USD/ounce troy.</div>
           <section class="card"><h2>Tình trạng nguồn dữ liệu</h2><div class="table-wrap"><table><thead><tr><th>Nguồn</th><th>Giấy phép</th><th>Lần quan sát cuối</th><th>Trạng thái</th><th>Loại dữ liệu</th></tr></thead><tbody><tr v-for="source in sources" :key="source.id"><td><a :href="source.source_url" target="_blank" rel="noopener noreferrer">{{ source.name }} ↗</a><small>{{ source.license_note }}</small></td><td>{{ source.license_status }}</td><td>{{ timestamp(source.latest_observed_at) }}</td><td>{{ source.status }}<small>{{ source.last_error_code }}</small></td><td>{{ source.reference_types.join(', ') || 'Chưa nhập' }}</td></tr></tbody></table></div></section>
           <div class="two-columns"><section class="card"><h2>Nhập CSV qua CLI</h2><p class="muted">File UTF-8, đúng schema, timestamp có timezone, đơn vị cố định. Thực hiện trên môi trường quản trị nội bộ.</p><pre>python -m app.jobs.import_csv /imports/prices.csv
   --import-root /imports

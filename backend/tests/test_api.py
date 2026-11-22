@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -7,8 +7,10 @@ from fastapi.testclient import TestClient
 from app.api.routes import safe_csv_cell
 from app.db import get_db
 from app.ingestion.service import ingest, reconcile_day
+from app.jobs.collect_daily import collect_source
 from app.main import app
 from app.providers.csv_provider import parse_csv
+from app.providers.vang_today import SPOT_SOURCE_ID
 from app.repositories.prices import history
 
 
@@ -33,10 +35,32 @@ def test_health_and_empty_data(client):
     assert client.get("/api/v1/health/live").status_code == 200
     assert client.get("/api/v1/health/ready").status_code == 200
     products = client.get("/api/v1/catalog/products").json()["data"]
-    assert len(products) == 9
+    assert sum(p["provider_id"] == "vang-today" for p in products) == 11
     assert any(product["id"] == "btmh-kgb-24k-listed" for product in products)
     response = client.get("/api/v1/quotes/latest?product_id=sjc-bar-1l-hcm").json()
     assert response["data"] is None and response["data_status"] == "missing"
+
+
+def test_vang_today_world_quote_serves_latest_and_hourly(client, loaded, db, settings, monkeypatch):
+    now = datetime(2026, 11, 5, 5, tzinfo=UTC)
+
+    def fetch(timeout, allowlist, *, xauusd):
+        assert xauusd
+        return (
+            f'{{"success":true,"type":"XAUUSD","timestamp":{int(now.timestamp())},'
+            '"buy":3539.25,"sell":0}'
+        ).encode()
+
+    assert client.get("/api/v1/prices/world/latest").json()["data"] is None
+    monkeypatch.setattr("app.providers.vang_today.fetch_vang_today", fetch)
+    assert collect_source(db, SPOT_SOURCE_ID, settings, now=now, hourly=True)["inserted"] == 1
+    latest = client.get("/api/v1/prices/world/latest").json()
+    assert latest["unit"] == "USD/troy_oz"
+    assert latest["data"]["value"] == "3539.25000000"
+    assert latest["data"]["source_url"] == "https://www.vang.today/api/prices?type=XAUUSD"
+    hourly = client.get("/api/v1/prices/hourly?day=2026-11-05").json()["data"]
+    row = next(point for point in hourly if point["source"] == SPOT_SOURCE_ID)
+    assert row["kind"] == "spot" and row["hour"] == 12 and row["value"] == latest["data"]["value"]
 
 
 def test_history_precision_provenance_and_missing(client, loaded):

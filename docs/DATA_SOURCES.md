@@ -1,9 +1,12 @@
 # Nguồn và quyền dữ liệu
 
+Worker local dùng Vàng.Today cho giá vàng trong nước và giá thế giới XAU/USD. Các mục thu thập trực tiếp bên dưới ghi lại cấu hình trước khi chuyển nguồn.
+
 Khảo sát ban đầu **06/11/2026, Asia/Ho_Chi_Minh**; bổ sung Bảo Tín Mạnh Hải **08/11/2026**. Khả năng xem trang không phải quyền thu thập/lưu/tái phân phối. robots.txt không phải giấy phép.
 
 | Nguồn | Live API | Historical API | CSV | Trạng thái |
 |---|---|---|---|---|
+| Vàng.Today | API JSON công khai cho 11 mã trong nước, VND/lượng | API có truy vấn lịch sử, worker chỉ đọc giá hiện tại | Có | Nguồn tự động trong nước và XAU/USD (USD/ounce troy), [tài liệu tích hợp](https://www.vang.today/vi/api) |
 | SJC | Bảng công khai qua Firefox, hai nhóm sản phẩm theo VND/lượng | Chưa xác minh | Có | Adapter local theo giờ, chờ xác nhận quyền |
 | DOJI | Bảng hiển thị bằng JavaScript, mua/bán nghìn VND/chỉ | Chưa xác minh | Có | Adapter local theo giờ, ghi giờ đọc bảng; chờ xác nhận quyền |
 | Investing.com Gold Futures | Bảng theo hợp đồng GC, USD/troy oz | Chưa tích hợp backfill | Có, kèm mã hợp đồng | Adapter local theo giờ, chờ quyền bằng văn bản |

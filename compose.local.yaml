@@ -7,8 +7,6 @@ services:
     command: [python, -u, -m, app.jobs.collect_hourly]
     environment:
       INVESTING_ENABLED: ${INVESTING_ENABLED:-false}
-      SJC_ENABLED: ${SJC_ENABLED:-false}
-      DOJI_ENABLED: ${DOJI_ENABLED:-false}
   price-browser:
     image: selenium/standalone-firefox:4.53.0-20261120
     profiles: [price-browser]

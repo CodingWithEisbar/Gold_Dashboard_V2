@@ -51,7 +51,7 @@ def ingest(
             raise ValueError("Cấm SAMPLE DATA trong production")
         if obs.reference_type == "manual" and not rights_confirmed:
             raise ValueError("CSV cần xác nhận quyền sử dụng dữ liệu")
-        if obs.reference_type == "official" and source.license_status != "licensed":
+        if obs.reference_type == "official" and not source.allows_collection:
             raise ValueError("Nguồn official chưa được cấp phép")
         if obs.provider_timestamp > now + timedelta(minutes=5):
             raise ValueError("Timestamp nằm trong tương lai")

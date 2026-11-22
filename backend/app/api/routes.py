@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from statistics import median
 from typing import Annotated
@@ -24,6 +24,7 @@ from app.models import (
     QuoteSnapshot,
     SpotSnapshot,
 )
+from app.providers import vang_today
 from app.repositories.prices import history, hourly_history, observed_on, quote_payload, vn_today
 
 router = APIRouter(prefix="/api/v1")
@@ -87,6 +88,7 @@ def catalog(db: Db):
                 "product_code": p.product_code,
                 "location": p.location,
                 "purity": p.purity,
+                "brand": vang_today.PRODUCTS[p.product_code][1] if p.provider_id == vang_today.SOURCE_ID and p.product_code in vang_today.PRODUCTS else None,
                 "currency": p.currency,
                 "unit": p.unit,
             }
@@ -108,6 +110,30 @@ def latest(db: Db, product_id: ProductId):
         quote_payload(quote) if quote else None,
         data_status="missing" if quote is None else quote_payload(quote)["data_status"],
     )
+
+
+@router.get("/prices/world/latest")
+def latest_world_price(db: Db):
+    statement = select(SpotSnapshot).where(
+        SpotSnapshot.provider_id == vang_today.SPOT_SOURCE_ID,
+        SpotSnapshot.quality_flag == "valid",
+    )
+    if get_settings().app_env == "production":
+        statement = statement.where(SpotSnapshot.reference_type != "sample")
+    quote = db.scalar(statement.order_by(SpotSnapshot.provider_timestamp.desc()).limit(1))
+    metadata = {"currency": "USD", "unit": "USD/troy_oz"}
+    if quote is None:
+        return response(None, data_status="missing", **metadata)
+    status = "stale" if datetime.now(UTC) - quote.provider_timestamp > timedelta(hours=26) else "available"
+    if quote.reference_type == "sample":
+        status = "sample"
+    return response({
+        "symbol": "XAU/USD",
+        "value": quote.price,
+        "observed_at": quote.provider_timestamp,
+        "source_url": quote.source_url,
+        "reference_type": quote.reference_type,
+    }, data_status=status, **metadata)
 
 
 @router.get("/prices/hourly")
@@ -228,7 +254,7 @@ def sources(db: Db):
                 "last_error_code": source.last_error_code,
                 "next_poll_after": source.next_poll_after,
                 "status": latest_run.status if latest_run else "not_configured",
-                "quota": "Xem hợp đồng/dashboard nhà cung cấp; chưa có credentials để xác minh",
+                "quota": "API công khai · worker kiểm tra mỗi giờ" if source.license_status == "public_api" else "Xem hợp đồng/dashboard nhà cung cấp; chưa có credentials để xác minh",
             }
         )
     return response(result)

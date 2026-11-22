@@ -3,8 +3,11 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models import DataSource, GoldProduct
+from app.providers import vang_today
 
 SOURCES = [
+    (vang_today.SOURCE_ID, "Vàng.Today", vang_today.SOURCE_URL),
+    (vang_today.SPOT_SOURCE_ID, "Vàng.Today · XAU/USD", vang_today.SPOT_SOURCE_URL),
     ("sjc", "SJC", "https://www.sjc.com.vn/gia-vang-online"),
     ("doji", "DOJI", "https://banggia.doji.vn/gold-price"),
     ("investing-gold", "Investing.com · Gold Futures", "https://www.investing.com/commodities/gold"),
@@ -41,9 +44,16 @@ def seed_catalog(session: Session) -> None:
     """Metadata only. Never seed market observations."""
     for source_id, name, url in SOURCES:
         if session.get(DataSource, source_id) is None:
-            session.add(DataSource(id=source_id, name=name, source_url=url))
+            source = DataSource(id=source_id, name=name, source_url=url)
+            if source_id in {vang_today.SOURCE_ID, vang_today.SPOT_SOURCE_ID}:
+                source.license_status = "public_api"
+                source.license_note = "API công khai cho tích hợp ứng dụng · https://www.vang.today/vi/api"
+            session.add(source)
     session.flush()
-    for product_id, provider_id, code, name, location in PRODUCTS:
+    catalog = [(*row, "0.9999") for row in PRODUCTS]
+    catalog.extend((vang_today.product_id(code), vang_today.SOURCE_ID, code, name, location, purity)
+                   for code, (name, _, location, purity) in vang_today.PRODUCTS.items())
+    for product_id, provider_id, code, name, location, purity in catalog:
         if session.get(GoldProduct, product_id) is None:
             session.add(
                 GoldProduct(
@@ -52,7 +62,7 @@ def seed_catalog(session: Session) -> None:
                     product_code=code,
                     name=name,
                     location=location,
-                    purity=Decimal("0.9999"),
+                    purity=Decimal(purity) if purity else None,
                 )
             )
     session.flush()

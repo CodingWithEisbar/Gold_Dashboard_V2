@@ -80,12 +80,13 @@ services:
       DATABASE_PASSWORD_FILE: /run/secrets/db_ingestor_password
       XAU_API_KEY: ${XAU_API_KEY:-}
       METALS_LICENSE_CONFIRMED: ${METALS_LICENSE_CONFIRMED:-false}
+      VANG_TODAY_ENABLED: ${VANG_TODAY_ENABLED:-true}
       BTMH_ENABLED: ${BTMH_ENABLED:-false}
       BTMH_LICENSE_CONFIRMED: ${BTMH_LICENSE_CONFIRMED:-false}
       BTMH_CONVENTIONS_CONFIRMED: ${BTMH_CONVENTIONS_CONFIRMED:-false}
       BTMH_MIN_INTERVAL_MINUTES: ${BTMH_MIN_INTERVAL_MINUTES:-30}
       BTMH_MAX_AGE_HOURS: ${BTMH_MAX_AGE_HOURS:-24}
-      SOURCE_ALLOWLIST: ${SOURCE_ALLOWLIST:-api.metals.dev,baotinmanhhai.vn}
+      SOURCE_ALLOWLIST: ${SOURCE_ALLOWLIST:-api.metals.dev,baotinmanhhai.vn,www.vang.today}
       REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-10}
     secrets: [db_ingestor_password]
     # Dokploy Compose Jobs exec into a running container. This process does no scheduling.

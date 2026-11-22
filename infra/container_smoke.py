@@ -143,27 +143,17 @@ def verify(base, docker, compose, *, check_btmh_job=False):
         worker = services["worker"]
         project = worker["Config"]["Labels"]["com.docker.compose.project"]
         assert project.startswith("gold-") and project.endswith("-gate"), project
-        environment = dict(item.split("=", 1) for item in worker["Config"]["Env"] if "=" in item)
-        for flag in ("BTMH_ENABLED", "BTMH_LICENSE_CONFIRMED", "BTMH_CONVENTIONS_CONFIRMED"):
-            assert environment[flag].lower() == "false", flag
-        sources = json.load(request("/api/v1/data-sources/status"))["data"]
-        btmh = next(item for item in sources if item["id"] == "btmh")
-        assert btmh["license_status"] == "unverified"
         job = subprocess.run(
-            [docker, *compose, "exec", "-T", "worker", "python", "-m", "app.jobs.collect_daily", "--source", "btmh"],
+            [docker, *compose, "exec", "-T", "-e", "VANG_TODAY_ENABLED=false", "worker", "python", "-m",
+             "app.jobs.collect_daily", "--source", "btmh"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
         )
         output = json.loads(job.stdout)
-        assert output["provider_id"] == "btmh"
-        assert (job.returncode == 2 and output.get("error_code") == "license_not_approved_in_catalog") or (
-            job.returncode == 0 and output.get("reason") == "poll_interval_not_elapsed"
-        ), output
-        sources = json.load(request("/api/v1/data-sources/status"))["data"]
-        btmh = next(item for item in sources if item["id"] == "btmh")
-        assert btmh["last_error_code"] == "license_not_approved_in_catalog" and btmh["latest_observed_at"] is None
-        latest = json.load(request("/api/v1/quotes/latest?product_id=btmh-kgb-24k-listed"))
+        assert output["provider_id"] == "vang-today", output
+        assert job.returncode == 2 and output.get("error_code") == "source_disabled", output
+        latest = json.load(request("/api/v1/quotes/latest?product_id=vang-today-sjl1l10"))
         assert latest["data"] is None and latest["data_status"] == "missing"
-        checks.append("BTMH CLI works as production worker; rights gate logs failure and writes no market quotes")
+        checks.append("Legacy domestic schedule selects Vàng.Today; disabled feed writes no quotes")
     return checks
 
 

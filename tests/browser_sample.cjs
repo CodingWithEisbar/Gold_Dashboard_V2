@@ -10,6 +10,7 @@ const fs = require('node:fs');
     await page.goto('http://127.0.0.1:8765');
     await page.getByText('SAMPLE DATA — NOT REAL MARKET DATA', {exact:false}).first().waitFor();
     await page.getByRole('button', {name:/Mô phỏng lịch sử/}).click();
+    await page.getByLabel('Sản phẩm & vùng').selectOption('sjc-bar-1l-hcm');
     await page.getByLabel('Ngày mua', {exact:true}).fill('2026-11-04');
     await page.getByLabel(/^Ngày bán/).fill('2026-11-05');
     await page.getByRole('button', {name:'Xem kết quả mô phỏng →'}).click();

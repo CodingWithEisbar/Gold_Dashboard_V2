@@ -20,7 +20,10 @@ BTMH_PATH = "/bang-gia-vang"
 USER_AGENT = "GoldPremiumTracker/1.0"
 MAX_RESPONSE_BYTES = 256 * 1024
 MAX_HTML_BYTES = 2 * 1024 * 1024
+VANG_HOST = "www.vang.today"
+VANG_PATH = "/api/prices"
 ENDPOINTS = {
+    (VANG_HOST, VANG_PATH): ("application/json", MAX_RESPONSE_BYTES),
     (FIXED_HOST, FIXED_PATH): ("application/json", MAX_RESPONSE_BYTES),
     (BTMH_HOST, BTMH_PATH): ("text/html", MAX_HTML_BYTES),
     (BTMH_HOST, "/robots.txt"): ("text/plain", 16 * 1024),
@@ -34,7 +37,7 @@ class SourceUnavailable(Exception):
 
 
 def public_addresses(host: str) -> list[str]:
-    if host not in {FIXED_HOST, BTMH_HOST}:
+    if host not in {FIXED_HOST, BTMH_HOST, VANG_HOST}:
         raise SourceUnavailable("host_not_allowed")
     try:
         addresses = sorted({item[4][0] for item in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)})
@@ -122,6 +125,11 @@ def fetch_spot(api_key: str, timeout: int, allowlist: str) -> bytes:
         allowlist,
         query={"api_key": api_key, "metal": "gold", "currency": "USD"},
     )
+
+
+def fetch_vang_today(timeout: int, allowlist: str, *, xauusd: bool = False) -> bytes:
+    query = {"type": "XAUUSD"} if xauusd else None
+    return _fetch(VANG_HOST, VANG_PATH, timeout, allowlist, query=query)
 
 
 def fetch_btmh(timeout: int, allowlist: str, interval_minutes: int) -> bytes:

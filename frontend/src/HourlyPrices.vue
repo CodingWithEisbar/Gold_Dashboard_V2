@@ -19,14 +19,14 @@ interface Point {
   value: string | null
 }
 
-const props = defineProps<{refreshCount: number; market?: 'domestic' | 'world'; source?: string}>()
+const props = defineProps<{refreshCount: number; market?: 'domestic' | 'world'; symbols?: string[]}>()
 const day = ref(today()), points = ref<Point[]>([]), chosen = ref('')
 const loading = ref(false), error = ref('')
 const labels = Array.from({length: 24}, (_, i) => String(i).padStart(2, '0') + ':00')
 const key = (p: Point) => [p.kind, p.source, p.symbol].join('/')
 const marketPoints = computed(() => points.value.filter(p => {
-  if (props.market === 'world') return p.kind === 'future' && p.source === 'investing-gold'
-  if (props.market === 'domestic') return p.kind === 'gold' && (!props.source || p.source === props.source)
+  if (props.market === 'world') return p.kind === 'spot' && p.source === 'vang-today-xauusd'
+  if (props.market === 'domestic') return p.kind === 'gold' && p.source === 'vang-today' && (!props.symbols || props.symbols.includes(p.symbol))
   return true
 }))
 const options = computed(() => [...new Map(marketPoints.value.map(p => [key(p), p])).values()])
@@ -65,10 +65,10 @@ watch([day, () => props.refreshCount], async (_, __, onCleanup) => {
 <template>
   <section class="card chart-card">
     <div class="section-header">
-      <div><h2>{{ market === 'world' ? 'Giá Investing.com đã lưu theo giờ' : 'Báo giá theo giờ' }}</h2><p class="muted">Báo giá hợp lệ cuối mỗi giờ Việt Nam. Giờ trống biểu thị thiếu quan sát.</p></div>
+      <div><h2>{{ market === 'world' ? 'Biểu đồ XAU/USD theo giờ' : 'Báo giá theo giờ' }}</h2><p class="muted">Báo giá hợp lệ cuối mỗi giờ Việt Nam. Giờ trống biểu thị thiếu quan sát.</p></div>
       <div class="filters">
         <label>Ngày quan sát<input v-model="day" type="date" :max="today()"></label>
-        <label v-if="options.length">Sản phẩm / hợp đồng<select v-model="chosen">
+        <label v-if="market !== 'world' && options.length">Sản phẩm / hợp đồng<select v-model="chosen">
           <option v-for="p in options" :key="key(p)" :value="key(p)">{{ p.name }}</option>
         </select></label>
       </div>
@@ -82,7 +82,7 @@ watch([day, () => props.refreshCount], async (_, __, onCleanup) => {
         <template v-if="selected[0].kind === 'gold'"><th>Mua vào</th><th>Bán ra</th></template>
         <th v-else>Giá ({{ unit }})</th><th>Loại dữ liệu</th>
       </tr></thead><tbody><tr v-for="p in selected" :key="p.hour">
-        <td>{{ labels[p.hour] }}</td><td>{{ timestamp(p.observed_at) }}<small>{{ p.time_basis === 'board_observation' ? 'Giờ đọc bảng' : 'Giờ nguồn' }}</small></td><td>{{ p.source }}</td>
+        <td>{{ labels[p.hour] }}</td><td>{{ timestamp(p.observed_at) }}<small>{{ p.time_basis === 'board_observation' ? 'Giờ đọc bảng' : 'Giờ nguồn' }}</small></td><td>{{ p.source === 'vang-today-xauusd' ? 'Vàng.Today' : p.source }}</td>
         <template v-if="p.kind === 'gold'"><td>{{ money(p.bid) }}</td><td>{{ money(p.ask) }}</td></template>
         <td v-else>{{ Number(p.value).toLocaleString('vi-VN', {maximumFractionDigits: 8}) }}</td><td>{{ p.reference_type }}</td>
       </tr></tbody></table></div>

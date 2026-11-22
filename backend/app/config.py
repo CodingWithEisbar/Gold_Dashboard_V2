@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_password_file: Path | None = None
     xau_api_key: SecretStr = SecretStr("")
     metals_license_confirmed: bool = False
+    vang_today_enabled: bool = True
     investing_enabled: bool = False
     sjc_enabled: bool = False
     doji_enabled: bool = False
@@ -23,7 +24,7 @@ class Settings(BaseSettings):
     btmh_conventions_confirmed: bool = False
     btmh_min_interval_minutes: int = Field(default=30, ge=15, le=1440)
     btmh_max_age_hours: int = Field(default=24, ge=1, le=168)
-    source_allowlist: str = "api.metals.dev,baotinmanhhai.vn"
+    source_allowlist: str = "api.metals.dev,baotinmanhhai.vn,www.vang.today"
     request_timeout_seconds: int = Field(default=10, ge=1, le=30)
     daily_close_hour: int = Field(default=18, ge=0, le=23)
     daily_max_lag_minutes: int = Field(default=120, ge=1, le=1440)

@@ -50,6 +50,12 @@ class DataSource(Base):
     next_poll_after: Mapped[datetime | None] = mapped_column(UTCDateTime())
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
+    @property
+    def allows_collection(self) -> bool:
+        if self.license_status == "public_api":
+            return self.id in {"vang-today", "vang-today-xauusd"}
+        return self.license_status == "licensed"
+
 
 class GoldProduct(Base):
     __tablename__ = "gold_products"
@@ -62,7 +68,7 @@ class GoldProduct(Base):
     product_code: Mapped[str] = mapped_column(String(64))
     name: Mapped[str] = mapped_column(String(120))
     location: Mapped[str] = mapped_column(String(64))
-    purity: Mapped[Decimal] = mapped_column(Numeric(8, 6))
+    purity: Mapped[Decimal | None] = mapped_column(Numeric(8, 6))
     currency: Mapped[str] = mapped_column(String(8), default="VND")
     unit: Mapped[str] = mapped_column(String(24), default="VND/luong")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)

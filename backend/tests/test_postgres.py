@@ -127,8 +127,8 @@ def test_pg_dump_restore(pg_engine, tmp_path):
         capture_output=True,
     )  # noqa: S603
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT COUNT(*) FROM gold_products")).scalar() == 9
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "d303quotetime"
+        assert connection.execute(text("SELECT COUNT(*) FROM gold_products")).scalar() == 20
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "d304purity"
 
 
 def test_pg_btmh_job_uses_nonblocking_source_lock(pg_engine, monkeypatch):

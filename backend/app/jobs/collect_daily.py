@@ -19,8 +19,11 @@ from app.providers.investing import InvestingGoldProvider
 from app.providers.metals_dev import MetalsDevSpotProvider
 from app.providers.safe_http import SourceUnavailable
 from app.providers.sjc import SjcGoldProvider
+from app.providers.vang_today import SPOT_SOURCE_ID, VangTodayGoldProvider, VangTodaySpotProvider
 
 PROVIDERS = {
+    "vang-today": VangTodayGoldProvider,
+    SPOT_SOURCE_ID: VangTodaySpotProvider,
     "btmh": BtmhGoldProvider,
     "doji": DojiGoldProvider,
     "sjc": SjcGoldProvider,
@@ -28,7 +31,8 @@ PROVIDERS = {
     "metals-dev": MetalsDevSpotProvider,
 }
 # Stable transaction locks serialize each source's HTTP request + write + run accounting.
-SOURCE_LOCKS = {"investing-gold": 74198019, "sjc": 74198018, "btmh": 74198015, "doji": 74198017, "metals-dev": 74198016}
+ACTIVE_SOURCES = ("vang-today", SPOT_SOURCE_ID, "metals-dev")
+SOURCE_LOCKS = {"vang-today": 74198020, SPOT_SOURCE_ID: 74198021, "investing-gold": 74198019, "sjc": 74198018, "btmh": 74198015, "doji": 74198017, "metals-dev": 74198016}
 
 
 def collect_source(
@@ -62,7 +66,7 @@ def collect_source(
                 session.rollback()
                 return {**result, "status": "skipped", "reason": "poll_interval_not_elapsed"}
         source = session.get(DataSource, source_id)
-        if source is None or source.license_status != "licensed":
+        if source is None or not source.allows_collection:
             raise SourceUnavailable("license_not_approved_in_catalog")
         if source.next_poll_after and source.next_poll_after > started_at:
             until = source.next_poll_after.isoformat()
@@ -125,11 +129,10 @@ def run_collection(session: Session, settings: Settings, source_id: str = "all")
     session.commit()
     results = []
     if source_id == "all":
-        for missing in ("pnj", "manual-fx"):
-            record_run(session, missing, "source_unavailable", error_code="use_licensed_csv")
-            results.append({"provider_id": missing, "status": "source_unavailable", "action": "import_csv"})
+        record_run(session, "manual-fx", "source_unavailable", error_code="use_licensed_csv")
+        results.append({"provider_id": "manual-fx", "status": "source_unavailable", "action": "import_csv"})
         session.commit()
-    for selected in PROVIDERS if source_id == "all" else (source_id,):
+    for selected in ACTIVE_SOURCES if source_id == "all" else (source_id,):
         results.append(collect_source(session, selected, settings))
     if any(
         item["status"] in ("source_unavailable", "quarantined") and item.get("action") != "import_csv"
@@ -143,6 +146,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", choices=("all", *PROVIDERS), default="all")
     args = parser.parse_args()
+    # Existing domestic schedule commands now poll the single replacement feed.
+    if args.source in {"sjc", "doji", "btmh"}:
+        args.source = "vang-today"
     try:
         settings = get_settings()
         with Session(engine) as session:
