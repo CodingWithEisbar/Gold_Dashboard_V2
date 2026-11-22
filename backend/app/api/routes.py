@@ -137,11 +137,24 @@ def latest_world_price(db: Db):
 
 
 @router.get("/prices/hourly")
-def hourly_prices(db: Db, day: IsoDate):
-    if day > vn_today():
-        raise HTTPException(422, "Ngày nằm trong tương lai")
-    return JSONResponse(serializable({"data": hourly_history(db, day, get_settings()),
-                                      "day": day, "timezone": "Asia/Ho_Chi_Minh"}))
+def hourly_prices(
+    db: Db,
+    day: IsoDate | None = None,
+    start: Annotated[IsoDate | None, Query(alias="from")] = None,
+    end: Annotated[IsoDate | None, Query(alias="to")] = None,
+):
+    if day is not None:
+        if start is not None or end is not None:
+            raise HTTPException(422, "Chọn một ngày hoặc một khoảng ngày")
+        start = end = day
+    if start is None or end is None or end < start or (end - start).days >= 31 or end > vn_today():
+        raise HTTPException(422, "Chọn khoảng từ 1 đến 31 ngày, kết thúc muộn nhất hôm nay")
+    period = {"day": day} if day is not None else {"from": start, "to": end}
+    return JSONResponse(serializable({
+        "data": hourly_history(db, start, get_settings(), end=end),
+        **period,
+        "timezone": "Asia/Ho_Chi_Minh",
+    }))
 
 
 @router.get("/prices/history")

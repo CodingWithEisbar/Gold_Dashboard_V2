@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -43,16 +43,19 @@ def test_health_and_empty_data(client):
 
 def test_vang_today_world_quote_serves_latest_and_hourly(client, loaded, db, settings, monkeypatch):
     now = datetime(2026, 11, 5, 5, tzinfo=UTC)
+    observed = now - timedelta(days=1)
 
     def fetch(timeout, allowlist, *, xauusd):
         assert xauusd
         return (
-            f'{{"success":true,"type":"XAUUSD","timestamp":{int(now.timestamp())},'
+            f'{{"success":true,"type":"XAUUSD","timestamp":{int(observed.timestamp())},'
             '"buy":3539.25,"sell":0}'
         ).encode()
 
     assert client.get("/api/v1/prices/world/latest").json()["data"] is None
     monkeypatch.setattr("app.providers.vang_today.fetch_vang_today", fetch)
+    assert collect_source(db, SPOT_SOURCE_ID, settings, now=observed, hourly=True)["inserted"] == 1
+    observed = now
     assert collect_source(db, SPOT_SOURCE_ID, settings, now=now, hourly=True)["inserted"] == 1
     latest = client.get("/api/v1/prices/world/latest").json()
     assert latest["unit"] == "USD/troy_oz"
@@ -61,6 +64,11 @@ def test_vang_today_world_quote_serves_latest_and_hourly(client, loaded, db, set
     hourly = client.get("/api/v1/prices/hourly?day=2026-11-05").json()["data"]
     row = next(point for point in hourly if point["source"] == SPOT_SOURCE_ID)
     assert row["kind"] == "spot" and row["hour"] == 12 and row["value"] == latest["data"]["value"]
+    period = client.get("/api/v1/prices/hourly?from=2026-11-04&to=2026-11-05").json()["data"]
+    assert [(p["business_date"], p["hour"]) for p in period if p["source"] == SPOT_SOURCE_ID] == [
+        ("2026-11-04", 12), ("2026-11-05", 12)
+    ]
+    assert client.get("/api/v1/prices/hourly?from=2026-10-01&to=2026-11-05").status_code == 422
 
 
 def test_history_precision_provenance_and_missing(client, loaded):

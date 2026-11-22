@@ -124,12 +124,14 @@ def vn_today() -> date:
     return datetime.now(UTC).astimezone(VN).date()
 
 
-def hourly_history(session: Session, day: date, settings: Settings) -> list[dict]:
+def hourly_history(session: Session, start: date, settings: Settings, *, end: date | None = None) -> list[dict]:
     """Last valid published observation in each Vietnam hour, within a single series."""
     products = {p.id: p for p in session.scalars(select(GoldProduct))}
     buckets = {}
     for model in (QuoteSnapshot, SpotSnapshot, FuturesSnapshot):
-        statement = select(model).where(model.business_date == day, model.quality_flag == "valid")
+        statement = select(model).where(
+            model.business_date.between(start, end or start), model.quality_flag == "valid"
+        )
         if settings.app_env == "production":
             statement = statement.where(model.reference_type != "sample")
         snapshots = session.scalars(statement.order_by(model.provider_timestamp, model.id)
@@ -151,6 +153,7 @@ def hourly_history(session: Session, day: date, settings: Settings) -> list[dict
                 kind = "spot"
             buckets[(kind, snapshot.provider_id, symbol, hour)] = {
                 "kind": kind, "source": snapshot.provider_id, "symbol": symbol, "name": name,
+                "business_date": hour.date(),
                 "hour": hour.hour, "observed_at": snapshot.provider_timestamp, "fetched_at": snapshot.fetched_at,
                 "unit": snapshot.unit, "reference_type": snapshot.reference_type,
                 "time_basis": snapshot.time_basis if kind == "gold" else "provider",

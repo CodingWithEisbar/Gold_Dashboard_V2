@@ -44,7 +44,7 @@ Chạy `./start.sh --build`. Worker đọc [API Vàng.Today](https://www.vang.to
 
 Mục **Giá vàng trong nước** hiển thị 11 mã theo thương hiệu. Giá mua/bán có đơn vị VND/lượng. Mỗi báo giá giữ timestamp của bảng do API trả về. Khi timestamp và giá không đổi, worker ghi nhận lượt kiểm tra và giữ một bản giá duy nhất. Mục **Dữ liệu & nguồn** hiển thị trạng thái và lỗi gần nhất. Kiểm tra log bằng `docker compose logs --tail 20 worker`. Các báo giá cũ vẫn giữ nguồn ban đầu.
 
-Mục **Giá vàng thế giới** hiển thị giá giao ngay từ [API XAUUSD của Vàng.Today](https://www.vang.today/api/prices?type=XAUUSD), tính bằng USD/ounce troy. Biểu đồ và bảng theo giờ dùng báo giá đã lưu từ API này. Worker giữ thời điểm cập nhật do nguồn cung cấp.
+Mục **Giá vàng thế giới** hiển thị giá giao ngay từ [API XAUUSD của Vàng.Today](https://www.vang.today/api/prices?type=XAUUSD), tính bằng USD/ounce troy. Biểu đồ và bảng theo giờ dùng báo giá đã lưu từ API này. Bảng lịch sử trong nước và XAU/USD mặc định hiển thị 7 ngày gần nhất, có thể lọc từ 1 đến 31 ngày. Dữ liệu đã lưu nằm trong PostgreSQL và được giữ qua các lần khởi động lại. Worker giữ thời điểm cập nhật do nguồn cung cấp.
 
 Chuỗi vàng thế giới giao ngay dùng nguồn spot đã cấu hình và tỷ giá USD/VND để tính premium. Dữ liệu kỳ hạn đã lưu vẫn có trong lịch sử chung theo giờ.
 
