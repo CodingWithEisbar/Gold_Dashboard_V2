@@ -8,7 +8,15 @@
 
 ## Chạy local bằng Docker Compose
 
-Cần Docker Engine/Desktop chạy Linux containers và Docker Compose. Secrets dùng file để tương thích root filesystem read-only. Chạy từ thư mục repository:
+Cần Docker Engine/Desktop chạy Linux containers và Docker Compose. Trên Linux, chạy từ thư mục gốc của repo:
+
+```bash
+./start.sh
+```
+
+Script dùng Python 3 để tạo cấu hình lần đầu, khởi động các service và dùng curl để kiểm tra dashboard cùng API tại http://127.0.0.1:8080. Sau khi sửa code hoặc Dockerfile, chạy `./start.sh --build` để build lại image. Nếu dùng VS Code Remote SSH, mở địa chỉ chuyển tiếp của cổng `8080` trong tab **Ports**.
+
+Để chạy thủ công:
 
 ```bash
 python infra/init-local-env.py
