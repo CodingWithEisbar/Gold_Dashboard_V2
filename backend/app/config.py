@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     database_role: Literal["gold_reader", "gold_owner", "gold_ingestor"] | None = None
     database_password_file: Path | None = None
     xau_api_key: SecretStr = SecretStr("")
+    api_gateway_token: SecretStr = SecretStr("")
+    api_gateway_local_access: bool = False
+    api_log_path: Path | None = None
     metals_license_confirmed: bool = False
     vang_today_enabled: bool = True
     investing_enabled: bool = False

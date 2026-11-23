@@ -1,5 +1,19 @@
 # Triển khai Dokploy từng bước
 
+## Dùng PostgreSQL đã tạo trên Dokploy
+
+Trong **General** của Docker Compose service, chọn GitHub Provider, repo và branch rồi bấm **Save**. Nếu gặp `Github Provider not found`, kiểm tra GitHub App trong phần cài đặt Git của Dokploy, cấp quyền repo và chọn lưu lại provider trong service. [Kết nối GitHub](https://docs.dokploy.com/docs/core/github)
+
+Chọn `compose.dokploy.yaml` làm Compose Path. Khi deploy từ Git, vào **Patches → Create Patch → New file in root** và tạo `compose.dokploy.yaml` bằng nội dung file local. Dokploy thêm file này vào checkout sau khi clone. [Patches](https://docs.dokploy.com/docs/core/patches)
+
+Điền các giá trị từ `.env.dokploy.example` trong **Environment**. Dùng Internal Host của PostgreSQL trong ba URL và đặt `DOKPLOY_DATABASE_NETWORK` bằng tên mạng Docker mà PostgreSQL đang tham gia. Nếu dùng mạng overlay, mạng phải cho phép container Compose tham gia.
+
+Trên database đích, tạo `gold_owner`, `gold_reader` và `gold_ingestor` với mật khẩu riêng. Áp dụng quyền kết nối, quyền trên schema và quyền mặc định theo [infra/db-init.sh](../infra/db-init.sh) cho tên database đích. Nếu schema đã có bảng, cấp quyền tương ứng cả trên các bảng và sequence hiện có. Service `migrate` chạy migration và hoàn tất quyền ghi sau khi kết nối được.
+
+Trong **Domains**, chọn service `frontend`, cổng `8080` và bật HTTPS. Worker của cấu hình này lấy cả hai nguồn Vàng.Today mỗi giờ. Kiểm tra `/api/v1/health/ready`, sau đó xem **Dữ liệu & nguồn** để xác nhận cả hai nguồn đã ghi báo giá. Nếu cần lịch sử trong database cũ, phục hồi dữ liệu vào PostgreSQL đích trước khi bật worker.
+
+## Triển khai PostgreSQL cùng stack
+
 Chưa có domain, VPS, quyền Dokploy hoặc registry của người dùng. Các bước sau cần thực hiện trên hạ tầng thật và lưu bằng chứng. Không có deployment được xác minh trong phiên này.
 
 1. Chuẩn bị VPS Linux đang được hỗ trợ, Docker/Dokploy đã vá, DNS A/AAAA trỏ domain đến IP VPS. Chỉ mở ingress 80/443 cần thiết, SSH key-only qua IP tin cậy/VPN; bảo vệ UI Dokploy bằng 2FA/passkeys, RBAC và private access. Không public Traefik dashboard, DB hoặc Docker socket. Kiểm tra firewall cho Docker-published ports, không chỉ UFW thông thường.

@@ -59,8 +59,11 @@ services:
       APP_ENV: ${APP_ENV:-production}
       DATABASE_ROLE: gold_reader
       DATABASE_PASSWORD_FILE: /run/secrets/db_reader_password
+      API_LOG_PATH: /var/lib/gold-api/requests.sqlite3
+      API_GATEWAY_TOKEN: ${API_GATEWAY_TOKEN:-}
     secrets: [db_reader_password]
     expose: ["8000"]
+    volumes: [api_logs:/var/lib/gold-api]
     tmpfs: ["/tmp:uid=10001,gid=10001"]
     networks: [application, database]
     depends_on: {migrate: {condition: service_completed_successfully}}
@@ -117,6 +120,7 @@ services:
 
 volumes:
   pgdata:
+  api_logs:
 networks:
   database: {internal: true}
   application: {internal: true}

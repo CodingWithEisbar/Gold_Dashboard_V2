@@ -48,6 +48,12 @@ Mục **Giá vàng thế giới** hiển thị giá giao ngay từ [API XAUUSD c
 
 Chuỗi vàng thế giới giao ngay dùng nguồn spot đã cấu hình và tỷ giá USD/VND để tính premium. Dữ liệu kỳ hạn đã lưu vẫn có trong lịch sử chung theo giờ.
 
+### Nhật ký API Gateway
+
+Mở **API Gateway** để lọc GET/POST theo mã HTTP và xem các lượt worker thu thập giá. Nhật ký yêu cầu giữ 10.000 lượt gần nhất trong volume `api_logs` trên máy chạy API. Mỗi dòng lưu phương thức, mẫu endpoint, thời điểm, mã HTTP và thời lượng. Dữ liệu nhạy cảm như query string, nội dung yêu cầu và token nằm ngoài nhật ký.
+
+`./start.sh --build` mở trang theo dõi trên loopback local. Khi deploy, đặt `API_GATEWAY_TOKEN` bằng một token riêng trong môi trường server, rồi nhập token vào trang để xem. Với Dokploy đang dùng **Patches**, cập nhật patch bằng `compose.dokploy.yaml` trên máy và thêm token trong **Environment**.
+
 ## Chạy kiểm thử ngoài Docker
 
 Python 3.15.2 và Node 24.22.1 là phiên bản đã dùng để kiểm chứng. Dependency được khóa chính xác; Python lockfiles có SHA-256 từ PyPI, npm có package-lock integrity.

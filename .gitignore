@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+/compose.dokploy.yaml
 .venv/
 .tools/
 .secrets/

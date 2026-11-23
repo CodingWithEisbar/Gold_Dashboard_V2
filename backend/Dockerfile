@@ -11,6 +11,7 @@ WORKDIR /app
 COPY --from=dependencies /opt/venv /opt/venv
 RUN apk upgrade --no-cache \
     && addgroup -g 10001 gold && adduser -D -H -u 10001 -G gold gold \
+    && mkdir -m 700 -p /var/lib/gold-api && chown 10001:10001 /var/lib/gold-api \
     && /usr/local/bin/python -c "import shutil; shutil.rmtree('/usr/local/lib/python3.15/site-packages')"
 COPY backend/app ./app
 COPY backend/migrations ./migrations

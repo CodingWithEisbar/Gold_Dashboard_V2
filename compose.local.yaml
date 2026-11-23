@@ -1,6 +1,9 @@
 services:
   frontend:
     ports: ["127.0.0.1:8080:8080"]
+  api:
+    environment:
+      API_GATEWAY_LOCAL_ACCESS: "true"
   worker:
     depends_on:
       price-browser: {condition: service_healthy, required: false}

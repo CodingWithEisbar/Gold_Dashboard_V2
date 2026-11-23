@@ -3,10 +3,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, money, pct, timestamp, today, type Product, type Quote, type HistoryRow, type Source, type Simulation } from './api'
 import DomesticPrices from './DomesticPrices.vue'
 import HourlyPrices from './HourlyPrices.vue'
+import GatewayMonitor from './GatewayMonitor.vue'
 import WorldPrices from './WorldPrices.vue'
 import LineChart from './LineChart.vue'
 
-const tabs = ['Tổng quan', 'Phân tích premium', 'Mô phỏng lịch sử', 'Phòng kịch bản', 'Dữ liệu & nguồn']
+const tabs = ['Tổng quan', 'Phân tích premium', 'Mô phỏng lịch sử', 'Phòng kịch bản', 'Dữ liệu & nguồn', 'API Gateway']
 const marketTitles = { domestic: 'Giá vàng trong nước', world: 'Giá vàng thế giới' } as const
 const tab = ref<number | keyof typeof marketTitles>(0), products = ref<Product[]>([]), productId = ref('vang-today-sjl1l10')
 const pageTitle = computed(() => typeof tab.value === 'number' ? tabs[tab.value] : marketTitles[tab.value])
@@ -120,7 +121,7 @@ onBeforeUnmount(() => {
         {{ loading ? 'Đang tải dữ liệu…' : 'Làm mới dữ liệu' }}
       </button></header>
       <main id="main" :key="tab">
-        <div class="page-heading"><div><p class="eyebrow">GOLD PREMIUM · INVESTMENT SIMULATOR</p><h1>{{ pageTitle }}</h1><p v-if="tab === 'domestic'" class="muted">Giá mua vào, bán ra và chênh lệch theo thương hiệu, qua API Vàng.Today.</p><p v-else-if="tab === 'world'" class="muted">Giá vàng giao ngay · Vàng.Today</p><p v-else class="muted">Hiểu chênh lệch. Nhìn rõ chi phí. Mô phỏng trên dữ liệu đã kiểm chứng.</p></div><span class="tag">{{ tab === 'world' ? 'USD / troy oz' : 'VND / lượng' }}</span></div>
+        <div class="page-heading"><div><p class="eyebrow">GOLD PREMIUM · INVESTMENT SIMULATOR</p><h1>{{ pageTitle }}</h1><p v-if="tab === 'domestic'" class="muted">Giá mua vào, bán ra và chênh lệch theo thương hiệu, qua API Vàng.Today.</p><p v-else-if="tab === 'world'" class="muted">Giá vàng giao ngay · Vàng.Today</p><p v-else-if="tab === 5" class="muted">Nhật ký yêu cầu GET, POST và các lượt thu thập giá.</p><p v-else class="muted">Hiểu chênh lệch. Nhìn rõ chi phí. Mô phỏng trên dữ liệu đã kiểm chứng.</p></div><span v-if="tab !== 5" class="tag">{{ tab === 'world' ? 'USD / troy oz' : 'VND / lượng' }}</span></div>
         <div v-if="sample && tab !== 'world'" class="notice sample" role="status">SAMPLE DATA — NOT REAL MARKET DATA · Dữ liệu tổng hợp dùng để kiểm thử.</div>
         <div v-if="error" class="notice error" role="alert">{{ error }} <button class="quiet" @click="refresh">Thử tải lại</button></div>
         <div v-if="loading" class="sr-only" role="status">Đang tải dữ liệu từ hệ thống…</div>
@@ -176,7 +177,8 @@ onBeforeUnmount(() => {
   --import-root /imports
   --confirm-data-rights</pre><p>Không có public endpoint ghi giá. Quản trị viên cần xác nhận nguồn và quyền lưu trữ trước khi nhập.</p></section><section class="card"><h2>Chính sách tham chiếu ngày</h2><p>Snapshot hợp lệ cuối cùng trước hoặc đúng 18:00 Việt Nam, trong cửa sổ tối đa 120 phút. Không carry-forward qua ngày.</p><p class="muted">Giữ riêng provider / sản phẩm / vùng; quarantine nếu biến động vượt ngưỡng. Premium lệch giờ được gắn nhãn indicative/daily.</p><p>{{ missing.length }} ngày thiếu trong kỳ {{ startDate }} → {{ endDate }}</p><details v-if="missing.length"><summary>Xem ngày thiếu</summary><p class="missing-days">{{ missing.map(r => r.business_date).join(' · ') }}</p></details></section></div>
         </template>
-        <footer class="page-footer"><span>GOLD PREMIUM · Dữ liệu, không phải cam kết lợi nhuận.</span><span>1 lượng = 37,5 g · 1 troy oz = 31,1034768 g</span></footer>
+        <GatewayMonitor v-if="tab === 5"/>
+        <footer v-if="tab !== 5" class="page-footer"><span>GOLD PREMIUM · Dữ liệu, không phải cam kết lợi nhuận.</span><span>1 lượng = 37,5 g · 1 troy oz = 31,1034768 g</span></footer>
       </main>
     </div>
   </div>
